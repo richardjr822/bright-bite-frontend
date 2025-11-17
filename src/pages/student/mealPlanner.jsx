@@ -159,10 +159,8 @@ const fetchBackendPreferences = async (userId) => {
   if (!r.ok) return null;
   const json = await r.json();
   // Tolerate both legacy { preferences: {...} } and alias { data: {...} }
-  const prefsRaw = json?.preferences || json?.data?.preferences || json?.data || null;
-  if (!prefsRaw || (typeof prefsRaw === 'object' && Object.keys(prefsRaw).length === 0)) {
-    return null;
-  }
+  const prefsRaw = json?.preferences || json?.data?.preferences || json?.data || {};
+  // Even if empty object, proceed with normalized defaults
   return normalizeDbPrefs(prefsRaw);
 };
 
