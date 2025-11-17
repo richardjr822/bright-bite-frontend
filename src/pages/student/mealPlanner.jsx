@@ -48,6 +48,15 @@ const normalizePlan = (plan) => {
     const key = day.toLowerCase();
     if (!out[key]) out[key] = [];
     out[key] = (meals || []).map(m => {
+      const rawType = m.type || m.meal_type;
+      const typeNorm = (() => {
+        const t = (rawType || "").toString().toLowerCase();
+        if (t === "breakfast") return "Breakfast";
+        if (t === "lunch") return "Lunch";
+        if (t === "dinner") return "Dinner";
+        if (t === "snack") return "Snack";
+        return rawType || "Snack";
+      })();
       const macros = m.macros || {
         protein: m.protein || 0,
         carbs: m.carbs || 0,
@@ -56,7 +65,7 @@ const normalizePlan = (plan) => {
       return {
         id: m.id || crypto.randomUUID(),
         name: m.name,
-        type: m.type || m.meal_type,
+        type: typeNorm,
         calories: m.calories,
         prepTime: m.prep_time ?? m.prepTime ?? 20,
         description: m.description || "",
@@ -99,10 +108,12 @@ const enrichDescriptions = (plan, prefs) => {
   if (!plan) return plan;
   const out = {};
   Object.keys(plan).forEach(day => {
-    out[day] = plan[day].map(m => ({
-      ...m,
-      description: buildMealDescription(m, prefs).slice(0, 200)
-    }));
+    out[day] = plan[day].map(m => {
+      const desc = m.description && m.description.trim().length > 0
+        ? m.description
+        : buildMealDescription(m, prefs).slice(0, 200);
+      return { ...m, description: desc };
+    });
   });
   return out;
 };
@@ -302,7 +313,7 @@ const MealDetailsModal = ({ isOpen, onClose, meal }) => {
         fats: meal.macros.fats,
         meal_time: new Date().toISOString()
       };
-      await fetch(`${API_BASE}/meals`, {
+      await fetch(`${API_BASE}/meal-plans/meals`, {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify(payload)
