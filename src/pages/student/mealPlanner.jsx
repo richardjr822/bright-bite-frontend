@@ -158,9 +158,12 @@ const fetchBackendPreferences = async (userId) => {
   });
   if (!r.ok) return null;
   const json = await r.json();
-  const prefs = json?.data;
-  if (!prefs) return null;
-  return normalizeDbPrefs(prefs);
+  // Tolerate both legacy { preferences: {...} } and alias { data: {...} }
+  const prefsRaw = json?.preferences || json?.data?.preferences || json?.data || null;
+  if (!prefsRaw || (typeof prefsRaw === 'object' && Object.keys(prefsRaw).length === 0)) {
+    return null;
+  }
+  return normalizeDbPrefs(prefsRaw);
 };
 
 const normalizeDbPrefs = (db = {}) => ({
