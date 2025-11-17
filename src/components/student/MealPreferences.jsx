@@ -5,8 +5,7 @@ import {
   FaLeaf, FaAllergies, FaFire, FaUtensils, FaClock, FaDumbbell, FaAppleAlt,
   FaArrowRight, FaArrowLeft, FaCheck
 } from "react-icons/fa";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
+import { getMealPreferences, saveMealPreferences, generateMealPlan } from "../../api";
 
 const normalizeDbPrefs = (db = {}) => ({
   age: db.age ?? "",
@@ -65,11 +64,7 @@ const MealPreferences = ({ onComplete = () => {}, redirectTo = "/meal-planner" }
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE}/meal-plans/preferences`, {
-          headers: { "x-user-id": user.id },
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
+        const data = await getMealPreferences(user.id);
         const norm = normalizeDbPrefs(data?.preferences || {});
         setFormData(f => ({ ...f, ...norm }));
         setIsEditMode(!!data?.preferences);
@@ -98,22 +93,11 @@ const MealPreferences = ({ onComplete = () => {}, redirectTo = "/meal-planner" }
     if (!user?.id) return;
     setSubmitting(true);
     const payload = { ...formData, userId: user.id };
-    const method = isEditMode ? "PATCH" : "POST";
     let ok = false;
     let prefsForState = payload;
 
     try {
-      const res = await fetch(`${API_BASE}/meal-plans/preferences`, {
-        method,
-        headers: { "Content-Type": "application/json", "x-user-id": user.id },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        console.warn("MealPreferences: submit failed", res.status);
-        throw new Error("PREF_SAVE_FAILED");
-      }
-      // Try to read updated prefs if returned
-      const data = await res.json().catch(() => ({}));
+      const data = await saveMealPreferences(user.id, payload);
       const norm = normalizeDbPrefs(data?.preferences || {});
       prefsForState = { ...payload, ...norm };
       localStorage.setItem("mealPreferences", JSON.stringify(prefsForState));
@@ -126,11 +110,7 @@ const MealPreferences = ({ onComplete = () => {}, redirectTo = "/meal-planner" }
     }
 
     // Fire generate (non-blocking)
-    fetch(`${API_BASE}/meal-plans/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-user-id": user.id },
-      body: JSON.stringify({ userId: user.id, force: true })
-    }).catch(err => console.warn("MealPreferences: generate failed (non-blocking)", err));
+    generateMealPlan(user.id, { force: true }).catch(err => console.warn("MealPreferences: generate failed (non-blocking)", err));
 
     // Small delay to flush localStorage in some browsers
     await new Promise(r => setTimeout(r, 50));
@@ -178,20 +158,11 @@ const MealPreferences = ({ onComplete = () => {}, redirectTo = "/meal-planner" }
     if (!user?.id) return;
     setSaving(true);
     try {
-      const method = isEditMode ? "PATCH" : "POST";
-      const res = await fetch(`${API_BASE}/meal-plans/preferences`, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": user.id,
-        },
-        body: JSON.stringify({ ...formData, userId: user.id }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const payload = { ...formData, userId: user.id };
+      const data = await saveMealPreferences(user.id, payload);
       const norm = normalizeDbPrefs(data?.preferences || {});
-      localStorage.setItem("mealPreferences", JSON.stringify(norm));
-      navigate("/meal-planner", { replace: true, state: { preferences: norm } });
+      localStorage.setItem("mealPreferences", JSON.stringify({ ...payload, ...norm }));
+      navigate("/meal-planner", { replace: true, state: { preferences: { ...payload, ...norm } } });
     } catch {
       // silent
     } finally {
