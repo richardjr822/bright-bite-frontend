@@ -1,4 +1,5 @@
 import React, { useState, Fragment, useEffect } from 'react';
+import { API_BASE as CANONICAL_API_BASE } from '../../api.js';
 import { Dialog, Transition } from '@headlessui/react';
 import toast, { Toaster } from 'react-hot-toast';
 import { FaWallet, FaPlus, FaMinus, FaHistory, FaTimes, FaSpinner } from 'react-icons/fa';
@@ -364,7 +365,7 @@ const TopUpModal = ({ isOpen, onClose, onSubmit }) => {
 // ============== MAIN CONTAINER COMPONENT ==============
 
 export default function MyWallet() {
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+  const API_BASE = `${CANONICAL_API_BASE}`;
   const [balance, setBalance] = useState(0);
   const [walletId, setWalletId] = useState(null);
   const [transactions, setTransactions] = useState([]);

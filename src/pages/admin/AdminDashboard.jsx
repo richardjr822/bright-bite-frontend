@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import AdminSidebar from '../../components/admin/AdminSidebar';
-
-const API_BASE = "http://localhost:5000/api";
+import { API_BASE as CANONICAL_API_BASE } from '../../api.js';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -33,7 +32,7 @@ export default function AdminDashboard() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/admin/stats`, {
+      const response = await fetch(`${CANONICAL_API_BASE}/admin/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

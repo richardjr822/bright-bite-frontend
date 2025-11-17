@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE as CANONICAL_API_BASE } from '../../api.js';
 import {
   FaHeartbeat,
   FaFire,
@@ -37,7 +38,7 @@ export default function NutritionTracker() {
   const [preferences, setPreferences] = useState(null);
   const [summary, setSummary] = useState(null);
 
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+  const API_BASE = `${CANONICAL_API_BASE}`;
 
   const getUser = () => {
     try {
