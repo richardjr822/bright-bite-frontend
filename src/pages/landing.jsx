@@ -1,0 +1,630 @@
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { FaLeaf, FaWallet, FaShoppingCart, FaUsers, FaCalendarAlt, FaChartLine, FaArrowRight, FaCheckCircle } from "react-icons/fa";
+
+export default function Landing() {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", handleScroll);
+    setMounted(true);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <div className="font-sans antialiased w-full overflow-x-hidden bg-neutral-50 text-neutral-900">
+      <style>{`
+        :root {
+          --brand-dark: #0d3d23;
+          --brand-main: #1a5d3a;
+          --brand-light: #3f6b4e;
+          --brand-accent: #5f875a;
+        }
+        html, body {
+          height: 100%;
+          background: linear-gradient(180deg, #ffffff 0%, #f8faf8 100%);
+          scroll-behavior: smooth;
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.8s ease-out forwards;
+        }
+      `}</style>
+
+      {/* Enhanced Background accents */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div
+          aria-hidden
+          className="absolute -top-60 -left-40 w-[60rem] h-[60rem] rounded-full blur-3xl opacity-20 animate-pulse"
+          style={{
+            background: `radial-gradient(circle at center, var(--brand-light), transparent 60%)`,
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute -bottom-40 -right-40 w-[50rem] h-[50rem] rounded-full blur-3xl opacity-15 animate-pulse"
+          style={{
+            background: `radial-gradient(circle at center, var(--brand-accent), transparent 60%)`,
+            animationDelay: '2s'
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70rem] h-[70rem] rounded-full blur-3xl opacity-10"
+          style={{
+            background: `radial-gradient(circle at center, var(--brand-main), transparent 70%)`,
+          }}
+        />
+      </div>
+
+      {/* NAV */}
+      <nav
+        className={`fixed inset-x-0 top-0 z-50 flex items-center transition-all duration-300 ${
+          isScrolled
+            ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-neutral-200"
+            : "bg-transparent"
+        }`}
+        aria-label="Primary"
+      >
+        <div className="w-full max-w-7xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand-dark)] to-[var(--brand-main)] shadow-lg ring-1 ring-[var(--brand-main)] transition hover:shadow-xl hover:scale-105">
+              <svg
+                className="h-7 w-7 text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+                strokeWidth="1.25"
+                stroke="currentColor"
+                aria-hidden
+              >
+                <path
+                  d="M3 11c0 4 3 7 9 7s9-3 9-7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M7 10c1-2 3-3 5-3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M15 6c1 1 1 3 0 4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9 4c.6 0 1.6.7 2 1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span className="font-bold text-2xl tracking-tight text-[var(--brand-dark)]">
+              BrightBite
+            </span>
+          </div>
+
+          <div className="hidden md:flex items-center gap-8">
+            <a
+              href="#what-we-offer"
+              className="text-neutral-700 hover:text-[var(--brand-main)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--brand-main)]/20 rounded-sm px-2 text-sm font-medium relative group"
+              aria-label="Our Solutions"
+            >
+              Solutions
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[var(--brand-main)] group-hover:w-full transition-all duration-300"></span>
+            </a>
+            <a
+              href="#how-it-works"
+              className="text-neutral-700 hover:text-[var(--brand-main)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--brand-main)]/20 rounded-sm px-2 text-sm font-medium relative group"
+              aria-label="How it works"
+            >
+              How It Works
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[var(--brand-main)] group-hover:w-full transition-all duration-300"></span>
+            </a>
+            <Link
+              to="/login"
+              className="inline-flex items-center px-5 py-2.5 rounded-lg text-white font-semibold shadow-sm transition-all transform hover:-translate-y-[1px] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-main)]/20 text-sm bg-[var(--brand-dark)] hover:bg-[var(--brand-main)]"
+              aria-label="Client Login"
+            >
+              Login
+            </Link>
+          </div>
+
+          <button
+            className="md:hidden p-2 rounded-md text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[var(--brand-main)]/20"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-expanded={mobileMenuOpen}
+            aria-label="Toggle navigation"
+          >
+            <svg
+              className="w-6 h-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              aria-hidden
+            >
+              {mobileMenuOpen ? (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              ) : (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              )}
+            </svg>
+          </button>
+        </div>
+
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white/98 backdrop-blur-md border-t border-neutral-200 absolute top-full left-0 right-0 shadow-lg">
+            <div className="px-5 py-4 space-y-2">
+              <a
+                href="#what-we-offer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 px-3 rounded-md text-neutral-700 hover:bg-neutral-100 hover:text-[var(--brand-main)] transition-colors text-sm font-medium"
+              >
+                Solutions
+              </a>
+              <a
+                href="#how-it-works"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 px-3 rounded-md text-neutral-700 hover:bg-neutral-100 hover:text-[var(--brand-main)] transition-colors text-sm font-medium"
+              >
+                How It Works
+              </a>
+              <Link
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 px-3 rounded-md text-white text-center bg-[var(--brand-dark)] hover:bg-[var(--brand-main)] font-semibold text-sm transition-colors"
+              >
+                Login
+              </Link>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* ENHANCED HERO */}
+      <header className="pt-32 pb-16 md:pt-40 md:pb-24 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-8 animate-fadeIn">
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight tracking-tight text-neutral-900">
+                Better Food.{" "}
+                <span className="bg-gradient-to-r from-[var(--brand-dark)] to-[var(--brand-main)] bg-clip-text text-transparent">
+                  Brighter Futures.
+                </span>
+              </h1>
+              
+              <p className="text-xl text-neutral-600 max-w-lg leading-relaxed">
+                The all-in-one platform for effortless campus meal planning,
+                ordering, and delivery. Stop managing, start optimizing.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                <Link
+                  to="/register"
+                  className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-white font-semibold shadow-lg transition-all transform hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-[var(--brand-dark)] hover:bg-[var(--brand-main)]"
+                  aria-label="Get Started"
+                >
+                  Get Started Free
+                  <FaArrowRight className="w-4 h-4" />
+                </Link>
+                <a
+                  href="#what-we-offer"
+                  className="inline-flex items-center gap-2 px-6 py-4 rounded-xl font-medium border-2 border-neutral-300 transition-all hover:border-[var(--brand-main)] hover:text-[var(--brand-main)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 text-neutral-700"
+                >
+                  Learn More
+                </a>
+              </div>
+
+              {/* Trust indicators */}
+              <div className="flex flex-wrap items-center gap-6 pt-4">
+                {[
+                  { icon: FaCheckCircle, text: "Easy setup" },
+                  { icon: FaCheckCircle, text: "Secure & reliable" },
+                  { icon: FaCheckCircle, text: "Built for campuses" }
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-neutral-600">
+                    <item.icon className="w-4 h-4 text-[var(--brand-main)]" />
+                    <span>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative animate-fadeIn" style={{ animationDelay: '0.2s' }}>
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl transform hover:scale-[1.02] transition-transform duration-500">
+                <img
+                  src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1400&q=80"
+                  alt="Appetizing healthy meal bowl"
+                  className="w-full h-[420px] sm:h-[520px] lg:h-[600px] object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--brand-dark)]/40 via-transparent to-transparent" />
+              </div>
+
+              {/* Decorative elements */}
+              <div className="absolute -top-8 -right-8 w-24 h-24 bg-[var(--brand-accent)]/20 rounded-full blur-2xl animate-float" />
+              <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-[var(--brand-main)]/20 rounded-full blur-2xl animate-float" style={{ animationDelay: '1s' }} />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ENHANCED FEATURES */}
+      <section id="what-we-offer" className="relative z-10 py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--brand-main)]/10 border border-[var(--brand-main)]/20 text-[var(--brand-dark)] text-sm font-medium mb-4">
+              Everything You Need
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900 mb-4">
+              Everything You Need for Healthy Campus Eating
+            </h2>
+            <p className="mt-3 text-lg text-neutral-600 max-w-2xl mx-auto leading-relaxed">
+              Smart meal planning, convenient ordering, and nutrition tracking—all in one platform designed for students.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: <FaLeaf className="w-7 h-7" />,
+                title: "AI Meal Planner",
+                subtitle: "Personalized weekly meal plans tailored to your dietary goals and preferences.",
+                features: ["Custom calorie targets", "Macro tracking", "Dietary restrictions"]
+              },
+              {
+                icon: <FaShoppingCart className="w-7 h-7" />,
+                title: "Campus Canteen",
+                subtitle: "Browse multiple vendors, order ahead, and skip the line at pickup.",
+                features: ["Multiple vendors", "Real-time tracking", "Favorite items"]
+              },
+              {
+                icon: <FaChartLine className="w-7 h-7" />,
+                title: "Nutrition Tracking",
+                subtitle: "Monitor your daily intake and track progress toward your health goals.",
+                features: ["Daily summaries", "Macro breakdowns", "Goal monitoring"]
+              },
+            ].map((f, i) => (
+              <article
+                key={f.title}
+                className="group relative rounded-2xl p-8 bg-gradient-to-br from-white to-neutral-50 border border-neutral-200 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
+                aria-labelledby={`feature-${i}`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-main)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
+                
+                <div
+                  className="relative w-14 h-14 rounded-xl flex items-center justify-center mb-6 text-white shadow-lg transform group-hover:scale-110 transition-transform duration-300"
+                  style={{
+                    background:
+                      i === 0
+                        ? "linear-gradient(135deg, var(--brand-main), var(--brand-light))"
+                        : i === 1
+                        ? "linear-gradient(135deg, var(--brand-dark), var(--brand-main))"
+                        : "linear-gradient(135deg, var(--brand-light), var(--brand-accent))",
+                  }}
+                >
+                  {f.icon}
+                </div>
+                
+                <h3
+                  id={`feature-${i}`}
+                  className="text-xl font-bold mb-3 text-neutral-900 relative"
+                >
+                  {f.title}
+                </h3>
+                <p className="text-neutral-600 mb-4 relative leading-relaxed">{f.subtitle}</p>
+                
+                <ul className="space-y-2 relative">
+                  {f.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm text-neutral-600">
+                      <FaCheckCircle className="w-4 h-4 text-[var(--brand-main)] flex-shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-tl from-[var(--brand-main)]/5 to-transparent rounded-tl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </article>
+            ))}
+          </div>
+          
+          <div className="mt-16 text-center">
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white font-semibold transition-all transform hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-[var(--brand-dark)] hover:bg-[var(--brand-main)] shadow-lg"
+              aria-label="Get Started"
+            >
+              Get Started Today
+              <FaArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ENHANCED HOW IT WORKS */}
+      <section id="how-it-works" className="py-24 bg-gradient-to-b from-neutral-50 to-white relative overflow-hidden">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 relative">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--brand-main)]/10 border border-[var(--brand-main)]/20 text-[var(--brand-dark)] text-sm font-medium mb-4">
+              Simple Process
+            </div>
+            <h3 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight text-neutral-900">
+              Get Started in 3 Easy Steps
+            </h3>
+            <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
+              Launch your campus meal service quickly and efficiently.
+            </p>
+          </div>
+          
+          <div className="relative">
+            {/* Enhanced connecting line */}
+            <div className="hidden lg:block absolute top-24 left-[16.66%] right-[16.66%] h-1 bg-gradient-to-r from-[var(--brand-main)] via-[var(--brand-light)] to-[var(--brand-main)] rounded-full" />
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+              {[
+                {
+                  n: "1",
+                  icon: <FaUsers className="w-9 h-9" />,
+                  t: "Set Your Preferences",
+                  s: "Tell us your dietary goals, restrictions, and preferences to get started.",
+                  details: ["Dietary restrictions", "Calorie targets", "Meal preferences"]
+                },
+                {
+                  n: "2",
+                  icon: <FaCalendarAlt className="w-9 h-9" />,
+                  t: "Get AI Meal Plans",
+                  s: "Receive personalized weekly meal plans with complete nutritional info.",
+                  details: ["Weekly meal plans", "Macro breakdowns", "Prep time estimates"]
+                },
+                {
+                  n: "3",
+                  icon: <FaChartLine className="w-9 h-9" />,
+                  t: "Order & Track",
+                  s: "Order from campus vendors, track nutrition, and earn rewards.",
+                  details: ["Easy ordering", "Nutrition tracking", "Rewards points"]
+                },
+              ].map((step, idx) => (
+                <div
+                  key={step.n}
+                  className="group flex flex-col bg-white rounded-2xl p-8 shadow-lg border-2 border-neutral-100 hover:border-[var(--brand-main)] relative z-10 transition-all duration-300 hover:shadow-2xl transform hover:-translate-y-2"
+                >
+                  {/* Large decorative number */}
+                  <div
+                    className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-xl transform group-hover:scale-110 transition-transform duration-300"
+                    style={{
+                      background:
+                        idx === 0
+                          ? "linear-gradient(135deg, var(--brand-main), var(--brand-light))"
+                          : idx === 1
+                          ? "linear-gradient(135deg, var(--brand-dark), var(--brand-main))"
+                          : "linear-gradient(135deg, var(--brand-light), var(--brand-accent))",
+                    }}
+                  >
+                    {step.n}
+                  </div>
+                  
+                  <div
+                    className="mt-6 w-16 h-16 rounded-xl flex items-center justify-center text-white mb-6 shadow-lg transform group-hover:scale-110 transition-transform duration-300"
+                    style={{
+                      background:
+                        idx === 0
+                          ? "linear-gradient(135deg, var(--brand-main), var(--brand-light))"
+                          : idx === 1
+                          ? "linear-gradient(135deg, var(--brand-dark), var(--brand-main))"
+                          : "linear-gradient(135deg, var(--brand-light), var(--brand-accent))",
+                    }}
+                  >
+                    {step.icon}
+                  </div>
+                  
+                  <h4 className="text-xl font-bold text-neutral-900 mb-3">
+                    {step.t}
+                  </h4>
+                  <p className="text-neutral-600 mb-4 leading-relaxed">{step.s}</p>
+                  
+                  <ul className="space-y-2 mt-auto">
+                    {step.details.map((detail, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-neutral-600">
+                        <FaCheckCircle className="w-4 h-4 text-[var(--brand-main)] flex-shrink-0" />
+                        <span>{detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="mt-16 text-center">
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white font-semibold transition-all transform hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-[var(--brand-dark)] hover:bg-[var(--brand-main)] shadow-lg"
+              aria-label="Start Your Journey"
+            >
+              Start Your Journey Today
+              <FaArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA SECTION */}
+      <section className="py-24 bg-gradient-to-r from-[var(--brand-dark)] to-[var(--brand-main)] relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDEzNGg0djJoLTR6bTAtNGg0djJoLTR6bTAtNGg0djJoLTR6bTAtNGg0djJoLTR6bTQgMTJoMnY0aC0yem00LTEyaDJ2NGgtMnptMCA0aDJ2NGgtMnptMCA0aDJ2NGgtMnptMCA0aDJ2NGgtMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
+        
+        <div className="max-w-4xl mx-auto px-5 sm:px-8 text-center relative z-10">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            Ready to Take Control of Your Campus Dining?
+          </h2>
+          <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Join students using BrightBite to eat healthier, order smarter, and achieve their nutrition goals on campus.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-[var(--brand-dark)] font-semibold shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/20"
+            >
+              Get Started Free
+              <FaArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href="#what-we-offer"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-transparent border-2 border-white text-white font-semibold transition-all hover:bg-white hover:text-[var(--brand-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/20"
+            >
+              Learn More
+            </a>
+          </div>
+
+          <p className="mt-8 text-white/70 text-sm">
+            No credit card required • Get started in minutes
+          </p>
+        </div>
+      </section>
+
+      {/* ENHANCED FOOTER */}
+      <footer className="bg-white border-t border-neutral-200">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand-dark)] to-[var(--brand-main)] shadow ring-1 ring-[var(--brand-main)] transition">
+                  <svg
+                    className="h-7 w-7 text-white"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    strokeWidth="1.25"
+                    stroke="currentColor"
+                  >
+                    <path
+                      d="M3 11c0 4 3 7 9 7s9-3 9-7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M7 10c1-2 3-3 5-3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M15 6c1 1 1 3 0 4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M9 4c.6 0 1.6.7 2 1.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span className="font-bold text-2xl text-neutral-900 tracking-tight">BrightBite</span>
+              </div>
+              <p className="text-neutral-600 mb-4 max-w-md leading-relaxed">
+                Empowering students with AI-powered meal planning, convenient campus ordering, and personalized nutrition tracking.
+              </p>
+              <div className="flex gap-4">
+                {['twitter', 'linkedin', 'instagram'].map((social) => (
+                  <a
+                    key={social}
+                    href={`#${social}`}
+                    className="w-10 h-10 rounded-lg bg-neutral-100 hover:bg-[var(--brand-main)] text-neutral-600 hover:text-white flex items-center justify-center transition-all duration-300"
+                    aria-label={`Follow us on ${social}`}
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.477 2 2 6.477 2 12c0 5.523 4.477 10 10 10s10-4.477 10-10c0-5.523-4.477-10-10-10z" />
+                    </svg>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-neutral-900 mb-4">Features</h4>
+              <ul className="space-y-3">
+                <li>
+                  <a href="#what-we-offer" className="text-neutral-600 hover:text-[var(--brand-main)] transition-colors text-sm">
+                    AI Meal Planner
+                  </a>
+                </li>
+                <li>
+                  <a href="#what-we-offer" className="text-neutral-600 hover:text-[var(--brand-main)] transition-colors text-sm">
+                    Campus Canteen
+                  </a>
+                </li>
+                <li>
+                  <a href="#what-we-offer" className="text-neutral-600 hover:text-[var(--brand-main)] transition-colors text-sm">
+                    Nutrition Tracking
+                  </a>
+                </li>
+                <li>
+                  <a href="#what-we-offer" className="text-neutral-600 hover:text-[var(--brand-main)] transition-colors text-sm">
+                    Rewards & Deals
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-neutral-900 mb-4">Legal</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link to="/privacy-policy" className="text-neutral-600 hover:text-[var(--brand-main)] transition-colors text-sm">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms-of-service" className="text-neutral-600 hover:text-[var(--brand-main)] transition-colors text-sm">
+                    Terms of Service
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-neutral-200 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-sm text-neutral-600">
+              © {new Date().getFullYear()} BrightBite. All rights reserved.
+            </div>
+            <div className="flex gap-6">
+              <Link
+                to="/privacy-policy"
+                className="text-neutral-600 hover:text-[var(--brand-main)] transition-colors text-sm"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                to="/terms-of-service"
+                className="text-neutral-600 hover:text-[var(--brand-main)] transition-colors text-sm"
+              >
+                Terms of Service
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
