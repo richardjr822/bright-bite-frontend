@@ -87,21 +87,35 @@ export const register = (email, password, full_name) =>
   });
 
 // Unified meal plan helpers using apiClient (token auto-added from localStorage)
-export function saveMealPreferences(userId, prefs) {
-  return apiClient(`/meal-plans/preferences/${userId}`, {
-    method: 'PUT',
-    body: JSON.stringify(prefs),
+export async function getMealPreferences(userId) {
+  return apiClient(`/meal-plans/preferences`, {
+    headers: { 'x-user-id': userId },
   });
 }
 
-export function getMealPreferences(userId) {
-  return apiClient(`/meal-plans/preferences/${userId}`, {});
+export async function saveMealPreferences(userId, prefs) {
+  const body = { ...(prefs || {}), userId };
+  try {
+    return await apiClient(`/meal-plans/preferences`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    const msg = (e && e.message ? String(e.message) : '').toLowerCase();
+    if (msg.includes('no preferences') || msg.includes('404') || msg.includes('not found')) {
+      return apiClient(`/meal-plans/preferences`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+    }
+    throw e;
+  }
 }
 
-export function generateMealPlan(userId, payload) {
-  return apiClient(`/meal-plans/generate/${userId}`, {
+export function generateMealPlan(userId, payload = {}) {
+  return apiClient(`/meal-plans/generate`, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ userId, ...(payload || {}) }),
   });
 }
 
