@@ -169,9 +169,10 @@ const fetchBackendPreferences = async (userId) => {
   });
   if (!r.ok) return null;
   const json = await r.json();
-  // Tolerate both legacy { preferences: {...} } and alias { data: {...} }
-  const prefsRaw = json?.preferences || json?.data?.preferences || json?.data || {};
-  // Even if empty object, proceed with normalized defaults
+  // Tolerate both shapes
+  const prefsRaw = json?.preferences || json?.data?.preferences || json?.data || null;
+  // Gate: if backend returned no row (empty or null), force setup first
+  if (!prefsRaw || (typeof prefsRaw === "object" && Object.keys(prefsRaw).length === 0)) return null;
   return normalizeDbPrefs(prefsRaw);
 };
 
