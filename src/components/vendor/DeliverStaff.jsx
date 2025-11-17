@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import jsPDF from 'jspdf';
 import { API_BASE } from '../../api';
 import {
   FaUserPlus,
@@ -37,9 +39,82 @@ const DeliverStaff = () => {
     setGeneratedPassword('');
   }, []);
 
-  const generateStaffId = () => {};
+  const generateStaffId = () => {
+    // VND-YYYYMMDD-XXXX
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `VND-${y}${m}${day}-${rand}`;
+  };
 
-  const generatePassword = () => {};
+  const generatePassword = () => {
+    // 10 chars: upper, lower, digits
+    const U = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const L = 'abcdefghijkmnopqrstuvwxyz';
+    const D = '23456789';
+    const all = U + L + D;
+    let pwd = '';
+    pwd += U[Math.floor(Math.random() * U.length)];
+    pwd += L[Math.floor(Math.random() * L.length)];
+    pwd += D[Math.floor(Math.random() * D.length)];
+    for (let i = 0; i < 7; i++) pwd += all[Math.floor(Math.random() * all.length)];
+    return pwd.split('').sort(() => 0.5 - Math.random()).join('');
+  };
+
+  const [staffList, setStaffList] = useState([]);
+  const fetchStaffList = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const resp = await fetch(`${API_BASE}/vendor/delivery-staff`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' },
+        credentials: 'include',
+      });
+      if (!resp.ok) throw new Error('Failed to load staff');
+      const data = await resp.json();
+      setStaffList(Array.isArray(data?.staff) ? data.staff : []);
+    } catch (e) {
+      console.error('Failed to fetch staff list', e);
+      setStaffList([]);
+    }
+  };
+  useEffect(() => { fetchStaffList(); }, []);
+
+  const generatePdf = async ({ firstName, lastName, email, phone, staffId, password, photo }) => {
+    const doc = new jsPDF();
+    const brand = 'BrightBite';
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text(`${brand} — Delivery Staff Credentials`, 14, 18);
+    doc.setDrawColor(16, 185, 129);
+    doc.line(14, 22, 196, 22);
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    let y = 32;
+    doc.text(`Name: ${firstName} ${lastName}`.trim(), 14, y); y += 8;
+    doc.text(`Email: ${email}`, 14, y); y += 8;
+    doc.text(`Phone: ${phone}`, 14, y); y += 8;
+    doc.text(`Staff ID: ${staffId}`, 14, y); y += 8;
+    doc.text(`Temporary Password: ${password}`, 14, y); y += 10;
+    doc.setTextColor(75);
+    doc.text('Please change this password upon first login.', 14, y); y += 10;
+    doc.setTextColor(0);
+
+    if (photo) {
+      try {
+        // Add profile photo at top-right
+        doc.addImage(photo, 'JPEG', 150, 28, 40, 40, undefined, 'FAST');
+      } catch {}
+    }
+
+    const date = new Date().toLocaleString();
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generated: ${date}`, 14, 285);
+    doc.save(`${staffId}-credentials.pdf`);
+  };
 
   const copyPassword = () => {
     navigator.clipboard.writeText(generatedPassword);
@@ -83,13 +158,14 @@ const DeliverStaff = () => {
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
-    } else if (!/^[0-9]{10,15}$/.test(formData.phone.replace(/[\s()-]/g, ''))) {
-      newErrors.phone = 'Invalid phone number';
+    } else {
+      const digits = formData.phone.replace(/\D/g, '');
+      if (digits.length < 7 || digits.length > 15) newErrors.phone = 'Enter a valid phone number (7-15 digits).';
     }
     if (!formData.profilePhoto) newErrors.profilePhoto = 'Profile photo is required';
 
@@ -101,57 +177,65 @@ const DeliverStaff = () => {
     e.preventDefault();
     
     if (!validateForm()) {
+      toast.error('Please fix the errors before submitting.');
       return;
     }
-
     setLoading(true);
 
     try {
       const token = localStorage.getItem('token');
-      const formDataToSend = new FormData();
-      formDataToSend.append('firstName', formData.firstName);
-      formDataToSend.append('lastName', formData.lastName);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('phone', formData.phone);
-      if (formData.profilePhoto) {
-        formDataToSend.append('profilePhoto', formData.profilePhoto);
-      }
+      const fd = new FormData();
+      fd.append('firstName', formData.firstName.trim());
+      fd.append('lastName', formData.lastName.trim());
+      fd.append('email', formData.email.trim());
+      fd.append('phone', formData.phone.trim());
+      if (formData.profilePhoto) fd.append('profilePhoto', formData.profilePhoto);
 
       const resp = await fetch(`${API_BASE}/vendor/delivery-staff`, {
         method: 'POST',
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-        body: formDataToSend,
+        headers: { Authorization: token ? `Bearer ${token}` : '' },
+        body: fd,
         credentials: 'include',
       });
-
+      const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err?.detail || err?.message || 'Failed to create delivery staff');
+        const msg = data?.detail || data?.message || 'Failed to create delivery staff';
+        throw new Error(msg);
       }
 
-      const data = await resp.json();
-      setGeneratedStaffId(data?.staff_id || '');
-      setGeneratedPassword(data?.initial_password || '');
-      // preserve for success screen
-      setLastCreated({
-        name: `${formData.firstName} ${formData.lastName}`.trim(),
-        email: formData.email,
-      });
+      const staffId = data?.staff_id || generateStaffId();
+      const initialPassword = data?.initial_password || generatePassword();
+
+      // Update UI
+      setGeneratedStaffId(staffId);
+      setGeneratedPassword(initialPassword);
+      setLastCreated({ name: `${formData.firstName} ${formData.lastName}`.trim(), email: formData.email.trim() });
       setShowSuccess(true);
-      // Reset form for next entry
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        profilePhoto: null,
+
+      // Generate and download PDF (client-side) using returned credentials
+      await generatePdf({
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        staffId,
+        password: initialPassword,
+        photo: photoPreview || null,
       });
+
+      toast.success('Delivery staff created and PDF downloaded.');
+
+      // Refresh list from backend
+      await fetchStaffList();
+
+      // Reset form for next entry
+      setFormData({ firstName: '', lastName: '', email: '', phone: '', profilePhoto: null });
       setPhotoPreview(null);
+      setErrors({});
     } catch (error) {
-      console.error('Error creating staff account:', error);
-      setErrors({ submit: 'Failed to create account. Please try again.' });
+      console.error('Error creating staff locally:', error);
+      setErrors({ submit: error?.message || 'Failed to create staff. Please try again.' });
+      toast.error(error?.message || 'Failed to create staff.');
     } finally {
       setLoading(false);
     }
@@ -166,11 +250,11 @@ const DeliverStaff = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-3">Account Created Successfully!</h2>
           <p className="text-gray-600 mb-6">
-            {lastCreated.name || 'Delivery Staff'}'s delivery staff account has been created.
+            {lastCreated.name || 'Delivery Staff'}'s account credentials have been generated.
             <br />
             <span className="font-medium">Staff ID: {generatedStaffId}</span>
             <br />
-            A welcome email with login instructions has been sent to {lastCreated.email || 'their email'}.
+            A PDF with login instructions has been downloaded. Share it securely with {lastCreated.email || 'the staff'}.
           </p>
           <div className="flex justify-center gap-3">
             <button
@@ -186,7 +270,7 @@ const DeliverStaff = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center mb-3">
@@ -195,7 +279,7 @@ const DeliverStaff = () => {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Create Delivery Staff Account</h1>
-            <p className="text-sm text-gray-600 mt-1">Add a new delivery person to your team</p>
+            <p className="text-sm text-gray-600 mt-1">Add a new delivery person to your team. A PDF with credentials will be generated and the staff will be saved to your account.</p>
           </div>
         </div>
       </div>
@@ -401,12 +485,44 @@ const DeliverStaff = () => {
             ) : (
               <>
                 <FaUserPlus />
-                Create Account & Send Welcome Email
+                Create Account & Download PDF
               </>
             )}
           </button>
         </div>
       </form>
+
+      {/* Staff List */}
+      <div className="mt-10 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Delivery Staff</h2>
+          <span className="text-sm text-gray-500">{staffList.length} total</span>
+        </div>
+        {staffList.length === 0 ? (
+          <div className="p-6 text-sm text-gray-600">No delivery staff yet. Create one using the form above.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                  <th className="text-left px-6 py-3">Name</th>
+                  <th className="text-left px-6 py-3">Email</th>
+                  <th className="text-left px-6 py-3">Staff ID</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {staffList.map((s) => (
+                  <tr key={s.id || s.staff_id} className="hover:bg-gray-50">
+                    <td className="px-6 py-3 text-gray-900">{s.full_name || 'Delivery Staff'}</td>
+                    <td className="px-6 py-3 text-gray-700">{s.email}</td>
+                    <td className="px-6 py-3 font-mono">{s.staff_id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

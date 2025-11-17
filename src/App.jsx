@@ -7,7 +7,6 @@ import Landing from './pages/landing'
 import Register from './pages/register'
   import Beneficiaries from './components/Beneficiaries'
 import Programs from './components/programs'
-import EmailVerification from './components/emailVerification'
 import Settings from './components/Settings'
 import PostGoogleLogin from './components/postGoogleLogin'
 import MealPreferences from './components/student/MealPreferences'
@@ -72,7 +71,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/verify-email" element={<EmailVerification />} />
+        {/** Email verification temporarily disabled for presentation */}
         <Route path="/complete-profile" element={<PostGoogleLogin />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />

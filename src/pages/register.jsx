@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaUserAlt, FaEnvelope, FaLock, FaGoogle, FaBuilding, FaStore, FaFilePdf, FaTimes } from "react-icons/fa";
 import { useGoogleLogin } from '@react-oauth/google';
+import { toast } from 'react-hot-toast';
 
 import { API_BASE } from '../api';
 
@@ -166,21 +167,27 @@ export default function Register() {
     const errs = {};
     if (!form.name.trim()) errs.name = "Name is required.";
     if (!form.email.trim()) errs.email = "Email is required.";
-    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) errs.email = "Invalid email.";
+    else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(form.email)) errs.email = "Invalid email.";
     if (!form.password) errs.password = "Password is required.";
     else if (form.password.length < 8) errs.password = "Password must be at least 8 characters.";
+    else if (!/[A-Z]/.test(form.password)) errs.password = "Include at least one uppercase letter.";
+    else if (!/\d/.test(form.password)) errs.password = "Include at least one number.";
     if (form.password !== form.confirmPassword) errs.confirmPassword = "Passwords do not match.";
     
     if (userType === "student") {
       if (!form.organizationName.trim()) {
-        errs.organizationName = "Organization name is required.";
+        errs.organizationName = "Department is required.";
       }
     } else {
       // Vendor validations
       if (!form.businessName.trim()) errs.businessName = "Business name is required.";
-      if (!form.businessAddress.trim()) errs.businessAddress = "Business address is required.";
+      if (!form.businessAddress.trim()) errs.businessAddress = "Location is required.";
+      else if (!["Main Building", "Annex"].includes(form.businessAddress)) errs.businessAddress = "Select Main Building or Annex.";
       if (!form.contactNumber.trim()) errs.contactNumber = "Contact number is required.";
-      else if (!/^\+?[\d\s\-()]+$/.test(form.contactNumber)) errs.contactNumber = "Invalid phone number.";
+      else {
+        const digits = form.contactNumber.replace(/\D/g, "");
+        if (digits.length < 7 || digits.length > 15) errs.contactNumber = "Enter a valid phone number (7-15 digits).";
+      }
       if (!form.businessDescription.trim()) errs.businessDescription = "Business description is required.";
       if (!businessPermit) errs.businessPermit = "Business permit is required.";
     }
@@ -233,7 +240,7 @@ export default function Register() {
             throw new Error(respJson?.detail || "Failed to submit vendor application");
           }
 
-          // Optional: display success confirmation (could use toast)
+          toast.success('Vendor application submitted! We\'ll email you after review.');
           navigate("/login", {
             state: {
               vendorApplicationPending: true,
@@ -242,40 +249,36 @@ export default function Register() {
             }
           });
         } else {
-          // For students, use OTP verification
-          const otpResponse = await fetch(`${API_BASE}/auth/send-otp`, {
+          // For students, create account directly without OTP
+          const res = await fetch(`${API_BASE}/auth/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              name: form.name,
               email: form.email,
-              name: form.name
+              password: form.password,
+              organization_name: form.organizationName,
+              agree: form.agree
             }),
           });
 
-          if (!otpResponse.ok) {
-            const data = await otpResponse.json();
-            if (otpResponse.status === 400 && data.detail?.includes("already registered")) {
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            if (res.status === 409) {
               setErrors({ email: "This email is already registered. Please login instead." });
             } else {
-              throw new Error(data.detail || "Failed to send verification code");
+              throw new Error(data?.detail || data?.message || "Failed to register");
             }
             return;
           }
 
-          navigate("/verify-email", {
-            state: {
-              registrationData: {
-                email: form.email,
-                password: form.password,
-                name: form.name,
-                organization: form.organizationName,
-                role: 'student'
-              }
-            }
-          });
+          toast.success('Registration successful! You can now sign in.');
+          // Redirect to login after successful registration
+          navigate('/login', { state: { registeredEmail: form.email } });
         }
 
       } catch (err) {
+        if (err?.message) toast.error(err.message);
         setErrors({ api: err.message || "Failed to initiate registration" });
       } finally {
         setSubmitting(false);
@@ -424,11 +427,11 @@ export default function Register() {
                 )}
               </div>
 
-              {/* Organization Name (Student) or Business Name (Vendor) */}
+              {/* Department (Student) or Business Name (Vendor) */}
               {userType === "student" ? (
                 <div>
                   <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="organizationName">
-                    Campus / Organization <span className="text-red-500">*</span>
+                    Department <span className="text-red-500">*</span>
                   </label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-[#1a5d3a] transition-colors duration-200">
@@ -446,7 +449,7 @@ export default function Register() {
                       value={form.organizationName}
                       onChange={handleChange}
                       disabled={submitting}
-                      placeholder="Your campus or school"
+                      placeholder="Your Department (e.g., Computer Science)"
                     />
                   </div>
                   {errors.organizationName && (
@@ -454,6 +457,7 @@ export default function Register() {
                       {errors.organizationName}
                     </p>
                   )}
+                  <p className="mt-1 text-xs text-neutral-600">We use this to tailor your BrightBite experience within your department.</p>
                 </div>
               ) : (
                 <div>
@@ -491,38 +495,34 @@ export default function Register() {
             {/* Vendor Additional Fields */}
             {userType === "vendor" && (
               <>
-                {/* Business Address and Contact Number */}
+                {/* Location (Main Building/Annex) and Contact Number */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="businessAddress">
-                      Business Address <span className="text-red-500">*</span>
+                      Location <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-[#1a5d3a] transition-colors duration-200">
-                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <input
-                        id="businessAddress"
-                        name="businessAddress"
-                        type="text"
-                        className={`w-full pl-10 pr-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                          errors.businessAddress
-                            ? 'border-red-300 focus:ring-red-200'
-                            : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
-                        }`}
-                        value={form.businessAddress}
-                        onChange={handleChange}
-                        disabled={submitting}
-                        placeholder="123 Main Street, City"
-                      />
-                    </div>
+                    <select
+                      id="businessAddress"
+                      name="businessAddress"
+                      className={`w-full pr-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all ${
+                        errors.businessAddress
+                          ? 'border-red-300 focus:ring-red-200'
+                          : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
+                      }`}
+                      value={form.businessAddress}
+                      onChange={handleChange}
+                      disabled={submitting}
+                    >
+                      <option value="">Select location</option>
+                      <option value="Main Building">Main Building</option>
+                      <option value="Annex">Annex</option>
+                    </select>
                     {errors.businessAddress && (
                       <p className="mt-1.5 text-sm text-red-600" role="alert">
                         {errors.businessAddress}
                       </p>
                     )}
+                    <p className="mt-1.5 text-xs text-neutral-600">Choose where your canteen is located to improve pickup routing.</p>
                   </div>
 
                   <div>
@@ -547,7 +547,7 @@ export default function Register() {
                         value={form.contactNumber}
                         onChange={handleChange}
                         disabled={submitting}
-                        placeholder="+1 (555) 123-4567"
+                        placeholder="e.g., +63 912 345 6789"
                       />
                     </div>
                     {errors.contactNumber && (
@@ -647,9 +647,7 @@ export default function Register() {
                       {errors.businessPermit}
                     </p>
                   )}
-                  <p className="mt-1.5 text-xs text-neutral-600">
-                    Upload your valid business permit or DTI registration certificate
-                  </p>
+                  <p className="mt-1.5 text-xs text-neutral-600">Upload a valid business permit or DTI registration certificate (PDF, max 10MB).</p>
                 </div>
               </>
             )}
@@ -830,13 +828,13 @@ export default function Register() {
               />
               <label htmlFor="agree" className="ml-2 text-sm text-neutral-700">
                 I agree to the{' '}
-                <a href="#" className="text-[#1a5d3a] hover:text-[#0d3d23] font-medium transition-colors hover:underline">
+                <Link to="/terms-of-service" className="text-[#1a5d3a] hover:text-[#0d3d23] font-medium transition-colors hover:underline">
                   Terms of Service
-                </a>
+                </Link>
                 {' '}and{' '}
-                <a href="#" className="text-[#1a5d3a] hover:text-[#0d3d23] font-medium transition-colors hover:underline">
+                <Link to="/privacy-policy" className="text-[#1a5d3a] hover:text-[#0d3d23] font-medium transition-colors hover:underline">
                   Privacy Policy
-                </a>
+                </Link>
               </label>
             </div>
             {errors.agree && (
@@ -867,7 +865,7 @@ export default function Register() {
                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
                     <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  {userType === "vendor" ? "Submitting application..." : "Sending verification code..."}
+                  {userType === "vendor" ? "Submitting application..." : "Creating account..."}
                 </span>
               ) : (
                 userType === "vendor" ? "Submit Vendor Application" : "Create Account"

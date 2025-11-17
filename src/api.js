@@ -119,4 +119,54 @@ export function generateMealPlan(userId, payload = {}) {
   });
 }
 
+// ==== OTP & Email Helpers (Resend backend integration) ====
+export function sendRegistrationOtp(name, email) {
+  return apiClient(`/auth/send-otp`, {
+    method: 'POST',
+    body: JSON.stringify({ name, email }),
+  });
+}
+
+export function resendRegistrationOtp(name, email) {
+  return apiClient(`/auth/resend-otp`, {
+    method: 'POST',
+    body: JSON.stringify({ name, email }),
+  });
+}
+
+export function verifyRegistrationOtp(email, otp) {
+  return apiClient(`/auth/verify-otp`, {
+    method: 'POST',
+    body: JSON.stringify({ email, otp }),
+  });
+}
+
+export function completeRegistration(data) {
+  return apiClient(`/auth/complete-registration`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function sendResetOtp(email) {
+  return apiClient(`/auth/send-reset-otp`, {
+    method: 'POST',
+    body: JSON.stringify({ email, name: 'User' }),
+  });
+}
+
+export function verifyResetOtp(email, otp) {
+  return apiClient(`/auth/verify-reset-otp`, {
+    method: 'POST',
+    body: JSON.stringify({ email, otp }),
+  });
+}
+
+export function resetPassword(email, otp, newPassword) {
+  return apiClient(`/auth/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({ email, otp, new_password: newPassword }),
+  });
+}
+
 

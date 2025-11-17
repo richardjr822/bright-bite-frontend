@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaEnvelope, FaCheckCircle, FaArrowLeft, FaRedo } from 'react-icons/fa';
 
-import { API_BASE } from '../api';
+import { resendRegistrationOtp, verifyRegistrationOtp, completeRegistration } from '../api';
 
 const EmailVerification = () => {
   const navigate = useNavigate();
@@ -92,34 +92,9 @@ const EmailVerification = () => {
     setError('');
 
     try {
-      const verifyResponse = await fetch(`${API_BASE}/auth/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email,
-          otp: otpCode
-        })
-      });
-
-      if (!verifyResponse.ok) {
-        const errorData = await verifyResponse.json();
-        throw new Error(errorData.detail || 'Invalid verification code');
-      }
-
+      await verifyRegistrationOtp(email, otpCode);
       setSuccess('Email verified! Completing registration...');
-
-      const registerResponse = await fetch(`${API_BASE}/auth/complete-registration`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registrationData)
-      });
-
-      if (!registerResponse.ok) {
-        const errorData = await registerResponse.json();
-        throw new Error(errorData.detail || 'Registration failed');
-      }
-
-      const userData = await registerResponse.json();
+      const userData = await completeRegistration(registrationData);
       localStorage.setItem('user', JSON.stringify(userData.user));
       
       setTimeout(() => {
@@ -143,19 +118,7 @@ const EmailVerification = () => {
     setSuccess('');
 
     try {
-      const response = await fetch(`${API_BASE}/auth/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email,
-          name: registrationData.name
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to resend code');
-      }
+      await resendRegistrationOtp(registrationData.name, email);
 
       setSuccess('New verification code sent!');
       setTimeLeft(600);

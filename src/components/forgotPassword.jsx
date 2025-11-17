@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FaUser, FaLock, FaArrowRight, FaKey, FaEnvelope, FaArrowLeft } from "react-icons/fa";
+import { FaLock, FaArrowRight, FaEnvelope, FaArrowLeft } from "react-icons/fa";
+import { toast } from 'react-hot-toast';
 
-import { API_BASE } from '../api';
+import { sendResetOtp, resetPassword } from '../api';
 
 export default function ForgotPassword() {
-  const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password, 4: Success
+  const [step, setStep] = useState(1); // 1: Email, 3: New Password, 4: Success (OTP removed)
   const [form, setForm] = useState({
     email: '',
     otp: '',
@@ -16,23 +17,6 @@ export default function ForgotPassword() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (timeLeft === 0) return;
-    
-    const timerId = setTimeout(() => {
-      setTimeLeft(timeLeft - 1);
-    }, 1000);
-    
-    return () => clearTimeout(timerId);
-  }, [timeLeft]);
   
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -50,15 +34,7 @@ export default function ForgotPassword() {
     return errs;
   };
 
-  const validateOtp = () => {
-    const errs = {};
-    if (!form.otp.trim()) {
-      errs.otp = 'OTP is required.';
-    } else if (!/^\d{6}$/.test(form.otp)) {
-      errs.otp = 'OTP must be 6 digits.';
-    }
-    return errs;
-  };
+  // OTP validation removed (OTP flow disabled)
 
   const validatePassword = () => {
     const errs = {};
@@ -66,6 +42,10 @@ export default function ForgotPassword() {
       errs.password = 'Password is required.';
     } else if (form.password.length < 8) {
       errs.password = 'Password must be at least 8 characters.';
+    } else if (!/[A-Z]/.test(form.password)) {
+      errs.password = 'Include at least one uppercase letter.';
+    } else if (!/\d/.test(form.password)) {
+      errs.password = 'Include at least one number.';
     }
     
     if (!form.confirmPassword) {
@@ -97,70 +77,13 @@ export default function ForgotPassword() {
       setFormError('');
       
       try {
-        // Check if user exists first
-        const checkResponse = await fetch(`${API_BASE}/auth/check-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: form.email })
-        });
-
-        if (!checkResponse.ok) {
-          throw new Error('Email not found. Please check your email address.');
-        }
-
-        // Send OTP
-        const response = await fetch(`${API_BASE}/auth/send-reset-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            email: form.email,
-            name: 'User' // We don't have the name yet
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Failed to send OTP');
-        }
-
-        setOtpSent(true);
-        setTimeLeft(600); // 10 minutes
-        setStep(2);
-      } catch (error) {
-        setFormError(error.message || 'Failed to send OTP. Please try again.');
-      } finally {
-        setSubmitting(false);
-      }
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    const errs = validateOtp();
-    setErrors(errs);
-    
-    if (Object.keys(errs).length === 0) {
-      setSubmitting(true);
-      setFormError('');
-      
-      try {
-        const response = await fetch(`${API_BASE}/auth/verify-reset-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: form.email,
-            otp: form.otp
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Invalid OTP');
-        }
-
+        // Verify email exists; OTP disabled. Proceed to password step
+        await sendResetOtp(form.email);
+        toast.success('Email verified. You can reset your password now.');
         setStep(3);
       } catch (error) {
-        setFormError(error.message || 'Failed to verify OTP. Please try again.');
+        setFormError(error.message || 'Could not verify email. Please try again.');
+        if (error?.message) toast.error(error.message);
       } finally {
         setSubmitting(false);
       }
@@ -177,58 +100,20 @@ export default function ForgotPassword() {
       setFormError('');
       
       try {
-        const response = await fetch(`${API_BASE}/auth/reset-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: form.email,
-            otp: form.otp,
-            new_password: form.password
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Failed to reset password');
-        }
-
+        // OTP disabled: pass empty OTP; backend bypasses check
+        await resetPassword(form.email, '', form.password);
+        toast.success('Password reset successful!');
         setStep(4);
       } catch (error) {
         setFormError(error.message || 'Failed to reset password. Please try again.');
+        if (error?.message) toast.error(error.message);
       } finally {
         setSubmitting(false);
       }
     }
   };
 
-  const handleResendOtp = async () => {
-    if (timeLeft > 0) return;
-    
-    setSubmitting(true);
-    setFormError('');
-    
-    try {
-      const response = await fetch(`${API_BASE}/auth/send-reset-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: form.email,
-          name: 'User'
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to resend OTP');
-      }
-
-      setTimeLeft(600);
-    } catch (error) {
-      setFormError(error.message || 'Failed to resend OTP. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Resend OTP removed (OTP flow disabled)
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -310,7 +195,7 @@ export default function ForgotPassword() {
           
           <div className="flex justify-between mt-2 text-xs text-neutral-500">
             <span className={step >= 1 ? 'text-[#1a5d3a] font-semibold' : ''}>Email</span>
-            <span className={step >= 2 ? 'text-[#1a5d3a] font-semibold' : ''}>Verify</span>
+            {/* Verify step removed */}
             <span className={step >= 3 ? 'text-[#1a5d3a] font-semibold' : ''}>Reset</span>
             <span className={step >= 4 ? 'text-[#1a5d3a] font-semibold' : ''}>Done</span>
           </div>
@@ -318,7 +203,7 @@ export default function ForgotPassword() {
         
         <h2 className="text-2xl font-bold mb-6 text-center text-neutral-900">
           {step === 1 && 'Reset Your Password'}
-          {step === 2 && 'Verify Your Identity'}
+          {/* Step 2 removed */}
           {step === 3 && 'Create New Password'}
           {step === 4 && 'Password Reset Complete'}
         </h2>
@@ -367,7 +252,7 @@ export default function ForgotPassword() {
             </div>
             
             <p className="text-neutral-600 text-sm">
-              We'll send a one-time password (OTP) to your email address to verify your identity.
+              We will verify your email address and then let you reset your password.
             </p>
             
             <button
@@ -393,90 +278,7 @@ export default function ForgotPassword() {
           </form>
         )}
         
-        {/* Step 2: OTP Verification */}
-        {step === 2 && (
-          <form onSubmit={handleVerifyOtp} className="space-y-6">
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-semibold text-neutral-800" htmlFor="otp">
-                  Enter 6-digit OTP
-                </label>
-                {timeLeft > 0 && (
-                  <span className="text-sm text-[#1a5d3a] font-semibold">
-                    {formatTime(timeLeft)}
-                  </span>
-                )}
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaKey className="h-5 w-5 text-neutral-400" />
-                </div>
-                <input
-                  id="otp"
-                  name="otp"
-                  type="text"
-                  maxLength={6}
-                  className={`w-full rounded-lg border pl-10 pr-4 py-3 text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 transition-all tracking-widest text-center ${
-                    errors.otp
-                      ? 'border-red-300 focus:ring-red-200'
-                      : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
-                  }`}
-                  value={form.otp}
-                  onChange={handleChange}
-                  disabled={submitting}
-                  placeholder="123456"
-                />
-              </div>
-              {errors.otp && (
-                <p className="mt-1.5 text-sm text-red-600">{errors.otp}</p>
-              )}
-            </div>
-            
-            <div className="text-center">
-              <p className="text-neutral-600 text-sm mb-2">
-                We've sent a 6-digit code to <span className="text-[#0d3d23] font-semibold">{form.email}</span>
-              </p>
-              <button 
-                type="button"
-                className={`text-sm ${timeLeft > 0 ? 'text-neutral-400 cursor-not-allowed' : 'text-[#1a5d3a] hover:text-[#0d3d23] hover:underline cursor-pointer font-medium'}`}
-                onClick={handleResendOtp}
-                disabled={timeLeft > 0 || submitting}
-              >
-                Didn't receive the code? {timeLeft > 0 ? `Resend in ${formatTime(timeLeft)}` : 'Resend OTP'}
-              </button>
-            </div>
-            
-            <div className="flex flex-col md:flex-row gap-4">
-              <button
-                type="button"
-                className="md:w-1/2 rounded-lg border-2 border-neutral-300 bg-white text-neutral-700 font-semibold py-3 hover:bg-neutral-50 transition-all flex items-center justify-center"
-                onClick={() => setStep(1)}
-                disabled={submitting}
-              >
-                <FaArrowLeft className="mr-2 h-4 w-4" />
-                Back
-              </button>
-              
-              <button
-                type="submit"
-                className="md:w-1/2 rounded-lg bg-[#0d3d23] px-4 py-3 text-white font-semibold shadow hover:bg-[#1a5d3a] disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#1a5d3a]/20 focus:ring-offset-1 flex items-center justify-center"
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
-                      <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Verifying...
-                  </span>
-                ) : (
-                  'Verify'
-                )}
-              </button>
-            </div>
-          </form>
-        )}
+        {/* Step 2 removed (OTP verification bypassed) */}
         
         {/* Step 3: New Password */}
         {step === 3 && (
@@ -574,7 +376,7 @@ export default function ForgotPassword() {
               <button
                 type="button"
                 className="md:w-1/2 rounded-lg border-2 border-neutral-300 bg-white text-neutral-700 font-semibold py-3 hover:bg-neutral-50 transition-all flex items-center justify-center"
-                onClick={() => setStep(2)}
+                onClick={() => setStep(1)}
                 disabled={submitting}
               >
                 <FaArrowLeft className="mr-2 h-4 w-4" />
