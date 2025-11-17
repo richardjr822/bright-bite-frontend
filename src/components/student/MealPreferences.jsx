@@ -5,7 +5,7 @@ import {
   FaLeaf, FaAllergies, FaFire, FaUtensils, FaClock, FaDumbbell, FaAppleAlt,
   FaArrowRight, FaArrowLeft, FaCheck
 } from "react-icons/fa";
-import { getMealPreferences, saveMealPreferences, generateMealPlan } from "../../api";
+import { saveMealPreferences, generateMealPlan, getMealPreferences } from "../../api";
 
 const normalizeDbPrefs = (db = {}) => ({
   age: db.age ?? "",
@@ -155,18 +155,24 @@ const MealPreferences = ({ onComplete = () => {}, redirectTo = "/meal-planner" }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user?.id) return;
-    setSaving(true);
+    if (loading) return;
+    setLoading(true);
+    setErrors({});
+
     try {
-      const payload = { ...formData, userId: user.id };
-      const data = await saveMealPreferences(user.id, payload);
-      const norm = normalizeDbPrefs(data?.preferences || {});
-      localStorage.setItem("mealPreferences", JSON.stringify({ ...payload, ...norm }));
-      navigate("/meal-planner", { replace: true, state: { preferences: { ...payload, ...norm } } });
-    } catch {
-      // silent
+      // save (upsert) then optionally pre-generate
+      await saveMealPreferences(user.id, formState);
+
+      // optional: kick off generation but don't block navigation
+      generateMealPlan(user.id, { force: true }).catch(() => {});
+
+      toast.success("Preferences saved");
+      navigate("/student/mealPlanner");
+    } catch (err) {
+      console.error("Save preferences failed", err);
+      toast.error("Failed to save preferences");
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 

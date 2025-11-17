@@ -86,36 +86,54 @@ export const register = (email, password, full_name) =>
     body: JSON.stringify({ email, password, full_name }),
   });
 
+// Map UI camelCase prefs to backend's snake_case
+function toBackendPrefs(p = {}) {
+  return {
+    age: p.age ? Number(p.age) : null,
+    sex: p.sex || null,
+    height: p.height ? Number(p.height) : null,
+    weight: p.weight ? Number(p.weight) : null,
+    goal: p.goal || "maintain",
+    activity_level: p.activityLevel || "sedentary",
+    dietary_preference: Array.isArray(p.dietaryPreference) ? p.dietaryPreference : [],
+    avoid_foods: p.avoidFoods || "",
+    allergies: Array.isArray(p.allergies) ? p.allergies : [],
+    health_conditions: Array.isArray(p.healthConditions) ? p.healthConditions : [],
+    calorie_target: p.calorieTarget ? Number(p.calorieTarget) : null,
+    macro_preference: p.macroPreference || "balanced",
+    meals_per_day: p.mealsPerDay ? Number(p.mealsPerDay) : 3,
+    meal_complexity: p.mealComplexity || "simple",
+    meal_prep_style: p.mealPrepStyle || "daily",
+    daily_budget: p.dailyBudget ? Number(p.dailyBudget) : null,
+    cooking_time: p.cookingTime ? Number(p.cookingTime) : null,
+    cooking_methods: Array.isArray(p.cookingMethod) ? p.cookingMethod : [],
+    special_goals: Array.isArray(p.specialGoals) ? p.specialGoals : [],
+    appetite: p.appetite || "normal",
+  };
+}
+
 // Unified meal plan helpers using apiClient (token auto-added from localStorage)
 export async function getMealPreferences(userId) {
+  // header x-user-id required by backend
   return apiClient(`/meal-plans/preferences`, {
     headers: { 'x-user-id': userId },
   });
 }
 
-export async function saveMealPreferences(userId, prefs) {
-  const body = { ...(prefs || {}), userId };
-  try {
-    return await apiClient(`/meal-plans/preferences`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    });
-  } catch (e) {
-    const msg = (e && e.message ? String(e.message) : '').toLowerCase();
-    if (msg.includes('no preferences') || msg.includes('404') || msg.includes('not found')) {
-      return apiClient(`/meal-plans/preferences`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-    }
-    throw e;
-  }
+export function saveMealPreferences(userId, prefs) {
+  // PATCH upsert body: { userId, ...snake_case prefs }
+  const body = { userId, ...toBackendPrefs(prefs) };
+  return apiClient(`/meal-plans/preferences`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
 }
 
 export function generateMealPlan(userId, payload = {}) {
+  const body = { userId, ...payload };
   return apiClient(`/meal-plans/generate`, {
     method: 'POST',
-    body: JSON.stringify({ userId, ...(payload || {}) }),
+    body: JSON.stringify(body),
   });
 }
 
