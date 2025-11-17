@@ -86,6 +86,41 @@ export const register = (email, password, full_name) =>
     body: JSON.stringify({ email, password, full_name }),
   });
 
-// Rider feature removed: previous rider-related API helpers deleted.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://bright-bite-backend.onrender.com/api";
+
+export async function saveMealPreferences(userId, prefs, token) {
+  const res = await fetch(`${API_BASE}/meal-plans/preferences/${userId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(prefs),
+  });
+  if (!res.ok) throw new Error("PREF_SAVE_FAILED");
+  return res.json();
+}
+
+export async function getMealPreferences(userId, token) {
+  const res = await fetch(`${API_BASE}/meal-plans/preferences/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("PREF_FETCH_FAILED");
+  return res.json();
+}
+
+export async function generateMealPlan(userId, token, payload) {
+  const res = await fetch(`${API_BASE}/meal-plans/generate/${userId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("MEAL_PLAN_GEN_FAILED");
+  return res.json();
+}
 
 
