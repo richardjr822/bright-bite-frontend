@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { 
   FaUserCircle, 
@@ -17,10 +17,12 @@ import {
   FaSun,
   FaMoon,
   FaChevronLeft,
-  FaChevronRight
+  FaChevronRight,
+  FaHome
 } from "react-icons/fa";
 import { useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../utils/auth";
+import { API_BASE } from "../api";
 
 const LogoutModal = ({ isOpen, onCancel, onConfirm }) => {
   const dialogRef = useRef(null);
@@ -96,6 +98,25 @@ const StudentSidebar = () => {
 
   const greeting = getGreeting();
 
+  // Fetch wallet balance from API
+  const fetchWalletBalance = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      if (user?.id) headers['x-user-id'] = user.id;
+
+      const res = await fetch(`${API_BASE}/wallet`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setUserInfo(prev => ({ ...prev, walletBalance: data.wallet?.balance || 0 }));
+      }
+    } catch (e) {
+      console.error('Error fetching wallet balance:', e);
+    }
+  }, []);
+
   // Fetch user data from localStorage on mount
   useEffect(() => {
     try {
@@ -105,16 +126,42 @@ const StudentSidebar = () => {
         setUserInfo({
           fullName: user.full_name || user.name || "User",
           organization: user.organization || "No Organization",
-          walletBalance: user.wallet_balance || 0.00
+          walletBalance: 0 // Will be fetched from API
         });
+        // Fetch real wallet balance from API
+        fetchWalletBalance();
       } else {
-        navigate('/login');
+        // Don't redirect immediately - let the user see the page
+        // They can still browse but won't have personalized data
+        setUserInfo({
+          fullName: "Guest",
+          organization: "",
+          walletBalance: 0
+        });
       }
     } catch (error) {
       console.error('Error loading user data:', error);
-      navigate('/login');
+      setUserInfo({
+        fullName: "Guest",
+        organization: "",
+        walletBalance: 0
+      });
     }
-  }, [navigate]);
+  }, [fetchWalletBalance]);
+
+  // Refetch wallet balance when navigating to wallet page or back
+  useEffect(() => {
+    if (location.pathname === '/wallet' || location.pathname === '/canteen') {
+      fetchWalletBalance();
+    }
+  }, [location.pathname, fetchWalletBalance]);
+
+  // Refresh balance when other parts of the app update the wallet (e.g., order debit, top-up)
+  useEffect(() => {
+    const onWalletUpdated = () => fetchWalletBalance();
+    window.addEventListener('wallet:balance-updated', onWalletUpdated);
+    return () => window.removeEventListener('wallet:balance-updated', onWalletUpdated);
+  }, [fetchWalletBalance]);
 
   // Check if mobile view based on window size
   useEffect(() => {
@@ -276,6 +323,22 @@ const StudentSidebar = () => {
 
         {/* Menu Items - Scrollable */}
         <nav className="flex-1 relative z-10 overflow-y-auto custom-scrollbar pr-1">
+          {/* Overview Group */}
+          <div className="mb-4">
+            {(!isCollapsed || isMobileView) && (
+              <p className="text-[10px] font-bold text-gray-500 mb-2 px-2 tracking-wider uppercase">Overview</p>
+            )}
+            
+            <MenuItem 
+              to="/dashboard"
+              icon={FaHome}
+              label="Dashboard"
+              isActive={location.pathname === "/dashboard"}
+              color="green"
+              isCollapsed={isCollapsed && !isMobileView}
+            />
+          </div>
+
           {/* Food & Orders Group */}
           <div className="mb-4">
             {(!isCollapsed || isMobileView) && (

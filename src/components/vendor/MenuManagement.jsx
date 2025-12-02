@@ -12,7 +12,8 @@ import {
   FaSpinner,
   FaImage,
   FaTag,
-  FaPercent
+  FaPercent,
+  FaRobot
 } from 'react-icons/fa';
 import { API_BASE } from '../../api';
 
@@ -34,10 +35,17 @@ export default function MenuManagement() {
     category: 'Pasta',
     is_available: true,
     has_discount: false,
-    discount_percentage: 0
+    discount_percentage: 0,
+    calories: '',
+    protein: '',
+    carbs: '',
+    fiber: ''
   });
   const [imageFile, setImageFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiRecs, setAiRecs] = useState([]);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -83,7 +91,11 @@ export default function MenuManagement() {
         category: item.category,
         is_available: item.is_available,
         has_discount: item.has_discount || false,
-        discount_percentage: item.discount_percentage || 0
+        discount_percentage: item.discount_percentage || 0,
+        calories: item.calories ?? '',
+        protein: item.protein ?? '',
+        carbs: item.carbs ?? '',
+        fiber: item.fiber ?? ''
       });
       setImageFile(null);
     } else {
@@ -95,7 +107,11 @@ export default function MenuManagement() {
         category: 'Pasta',
         is_available: true,
         has_discount: false,
-        discount_percentage: 0
+        discount_percentage: 0,
+        calories: '',
+        protein: '',
+        carbs: '',
+        fiber: ''
       });
       setImageFile(null);
     }
@@ -112,7 +128,11 @@ export default function MenuManagement() {
       category: 'Pasta',
       is_available: true,
       has_discount: false,
-      discount_percentage: 0
+      discount_percentage: 0,
+      calories: '',
+      protein: '',
+      carbs: '',
+      fiber: ''
     });
     setImageFile(null);
   };
@@ -142,6 +162,10 @@ export default function MenuManagement() {
       fd.append('is_available', String(!!formData.is_available));
       fd.append('has_discount', String(!!formData.has_discount));
       fd.append('discount_percentage', String(parseInt(formData.discount_percentage || 0)));
+      if (formData.calories !== '') fd.append('calories', String(parseFloat(formData.calories)));
+      if (formData.protein !== '') fd.append('protein', String(parseFloat(formData.protein)));
+      if (formData.carbs !== '') fd.append('carbs', String(parseFloat(formData.carbs)));
+      if (formData.fiber !== '') fd.append('fiber', String(parseFloat(formData.fiber)));
       if (imageFile) {
         fd.append('image', imageFile);
       }
@@ -253,6 +277,113 @@ export default function MenuManagement() {
         </button>
       </div>
 
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <FaRobot className="text-green-600" />
+            <p className="text-sm text-gray-700 font-medium">AI recommendations based on student meal preferences</p>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                setAiOpen(true); setAiLoading(true);
+                const token = localStorage.getItem('token');
+                if (!token || !user?.id) throw new Error('Missing auth');
+                const res = await fetch(`${API_BASE}/vendor/ai/recommendations/${user.id}?limit=5`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = res.ok ? await res.json() : { recommendations: [] };
+                setAiRecs(data.recommendations || []);
+              } catch (e) {
+                setAiRecs([]);
+              } finally {
+                setAiLoading(false);
+              }
+            }}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium"
+          >
+            {aiLoading ? 'Generating...' : 'Generate AI Suggestions'}
+          </button>
+        </div>
+        {aiOpen && (
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {aiLoading ? (
+              <div className="col-span-full flex items-center justify-center py-8"><FaSpinner className="animate-spin text-green-600" /></div>
+            ) : aiRecs.length === 0 ? (
+              <div className="col-span-full text-center text-gray-600 py-6">No suggestions right now</div>
+            ) : (
+              aiRecs.map((r, idx) => (
+                <div key={idx} className="border border-gray-200 rounded-xl p-4 bg-white">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-semibold text-gray-900">{r.name}</h3>
+                    <span className="text-sm text-emerald-700 font-semibold">₱{Number(r.price).toFixed(0)}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-2">{r.description}</p>
+                  <div className="text-xs text-gray-700 flex flex-wrap gap-2">
+                    <span className="px-2 py-0.5 bg-gray-100 rounded">{r.category}</span>
+                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded">{r.calories} kcal</span>
+                    <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded">P {r.protein}g</span>
+                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded">C {r.carbs}g</span>
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">F {r.fiber}g</span>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => handleOpenModal({
+                        name: r.name,
+                        description: r.description,
+                        price: r.price,
+                        category: r.category,
+                        is_available: true,
+                        has_discount: false,
+                        discount_percentage: 0,
+                        calories: r.calories,
+                        protein: r.protein,
+                        carbs: r.carbs,
+                        fiber: r.fiber
+                      })}
+                      className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Edit Before Adding
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('token');
+                          if (!token || !user?.id) throw new Error('Missing auth');
+                          const res = await fetch(`${API_BASE}/vendor/menu/${user.id}`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              name: r.name,
+                              description: r.description,
+                              price: r.price,
+                              category: r.category,
+                              is_available: true,
+                              has_discount: false,
+                              discount_percentage: 0,
+                              calories: r.calories,
+                              protein: r.protein,
+                              carbs: r.carbs,
+                              fiber: r.fiber
+                            })
+                          });
+                          if (res.ok) {
+                            await fetchMenuItems();
+                          }
+                        } catch (_) {}
+                      }}
+                      className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                    >
+                      Add to Menu
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Search and Filter */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
@@ -331,19 +462,33 @@ export default function MenuManagement() {
                     </span>
                   </div>
                   <div className="text-right">
-                    {item.has_discount ? (
-                      <>
-                        <p className="text-sm text-gray-400 line-through">₱{item.price.toFixed(2)}</p>
-                        <p className="text-xl font-bold text-red-600">
-                          ₱{(item.price * (1 - item.discount_percentage / 100)).toFixed(2)}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-xl font-bold text-green-600">₱{item.price.toFixed(2)}</p>
-                    )}
-                  </div>
+                  {item.has_discount ? (
+                    <>
+                      <p className="text-sm text-gray-400 line-through">₱{item.price.toFixed(2)}</p>
+                      <p className="text-xl font-bold text-red-600">
+                        ₱{(item.price * (1 - item.discount_percentage / 100)).toFixed(2)}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xl font-bold text-green-600">₱{item.price.toFixed(2)}</p>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{item.description}</p>
+              </div>
+              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{item.description}</p>
+              <div className="text-xs text-gray-700 flex flex-wrap gap-2 mb-3">
+                {typeof item.calories !== 'undefined' && item.calories !== null && (
+                  <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded">{Number(item.calories).toFixed(0)} kcal</span>
+                )}
+                {typeof item.protein !== 'undefined' && item.protein !== null && (
+                  <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded">P {Number(item.protein).toFixed(0)}g</span>
+                )}
+                {typeof item.carbs !== 'undefined' && item.carbs !== null && (
+                  <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded">C {Number(item.carbs).toFixed(0)}g</span>
+                )}
+                {typeof item.fiber !== 'undefined' && item.fiber !== null && (
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">F {Number(item.fiber).toFixed(0)}g</span>
+                )}
+              </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
@@ -453,6 +598,56 @@ export default function MenuManagement() {
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nutrition</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.calories}
+                      onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Calories (kcal)"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.protein}
+                      onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Protein (g)"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.carbs}
+                      onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Carbs (g)"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.fiber}
+                      onChange={(e) => setFormData({ ...formData, fiber: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Fiber (g)"
+                    />
+                  </div>
                 </div>
               </div>
 

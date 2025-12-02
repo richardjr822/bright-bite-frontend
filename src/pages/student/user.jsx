@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import StudentSidebar from "../../components/studentSidebar";
+import StudentHomeDashboard from "./StudentHomeDashboard";
 import MealPlannerPage from "./mealPlanner";
 import CampusCanteen from "./CampusCanteen";
 import MyOrders from "./MyOrders";
@@ -20,6 +21,8 @@ const User = () => {
     const path = location.pathname;
     
     switch(path) {
+      case "/dashboard":
+        return <StudentHomeDashboard />;
       case "/meal-planner":
         return <MealPlannerPage />;
       case "/canteen":
@@ -37,22 +40,15 @@ const User = () => {
       case "/settings":
         return <StudentSettings />;
       default:
-        // No dashboard or dashboard content for student side
-        return (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to BrightBite!</h2>
-              <p className="text-gray-600">Select a menu item from the sidebar to get started.</p>
-            </div>
-          </div>
-        );
+        // Default to dashboard
+        return <StudentHomeDashboard />;
     }
   };
 
   useEffect(() => {
-    // Redirect to /canteen if at /user root
+    // Redirect to /dashboard if at /user root
     if (location.pathname === "/user") {
-      navigate("/canteen", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
     setMounted(true);
   }, [location, navigate]);

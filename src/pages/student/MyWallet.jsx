@@ -2,7 +2,7 @@ import React, { useState, Fragment, useEffect } from 'react';
 import { API_BASE as CANONICAL_API_BASE } from '../../api.js';
 import { Dialog, Transition } from '@headlessui/react';
 import toast, { Toaster } from 'react-hot-toast';
-import { FaWallet, FaPlus, FaMinus, FaHistory, FaTimes, FaSpinner } from 'react-icons/fa';
+import { FaWallet, FaPlus, FaMinus, FaHistory, FaTimes, FaSpinner, FaFlask, FaShieldAlt, FaCheckCircle, FaArrowUp, FaArrowDown } from 'react-icons/fa';
 
 // ============== CUSTOM HOOK ==============
 // filepath: d:\BrightBite\frontend\src\hooks\useModal.js
@@ -20,36 +20,34 @@ const useModal = () => {
 // --- components/BalanceCard.jsx ---
 const BalanceCard = ({ balance, onTopUpClick, isLoading }) => {
   return (
-    <div className="bg-gradient-to-br from-green-500 via-green-600 to-emerald-600 rounded-2xl shadow-xl p-8 mb-6 text-white relative overflow-hidden">
+    <div className="bg-gradient-to-br from-[#0d3d23] to-[#1a5d3a] rounded-xl shadow-lg p-6 mb-5 text-white relative overflow-hidden border border-[#1a5d3a]">
       {/* Decorative elements */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32"></div>
-      <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-24 -translate-x-24"></div>
+      <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-24 translate-x-24"></div>
+      <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
       
       <div className="relative z-10">
-        <div className="flex items-center gap-2 mb-2">
-          <FaWallet className="text-green-100" />
-          <p className="text-green-100 text-sm font-medium">Available Balance</p>
+        <div className="flex items-center gap-2 mb-1.5">
+          <FaWallet className="text-green-200/80 text-sm" />
+          <p className="text-green-100/80 text-xs font-medium">Available Balance</p>
         </div>
-        <h2 className="text-6xl font-bold mb-8 tracking-tight">₱{balance.toFixed(2)}</h2>
-        <div className="flex gap-3">
-          <button
-            onClick={onTopUpClick}
-            disabled={isLoading}
-            className="flex-1 px-6 py-4 bg-white text-green-600 rounded-xl hover:bg-green-50 transition-all font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <>
-                <FaSpinner className="animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <FaPlus />
-                Top Up Wallet
-              </>
-            )}
-          </button>
-        </div>
+        <h2 className="text-4xl font-bold mb-6 tracking-tight">₱{balance.toFixed(2)}</h2>
+        <button
+          onClick={onTopUpClick}
+          disabled={isLoading}
+          className="w-full px-5 py-3 bg-white text-[#0d3d23] rounded-lg hover:bg-green-50 transition-all font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+        >
+          {isLoading ? (
+            <>
+              <FaSpinner className="animate-spin text-sm" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <FaPlus className="text-sm" />
+              Top Up Wallet
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
@@ -57,32 +55,101 @@ const BalanceCard = ({ balance, onTopUpClick, isLoading }) => {
 
 // --- components/TransactionItem.jsx ---
 const TransactionItem = ({ transaction }) => {
+  const isCredit = transaction.type === 'credit';
+  
+  // Parse description to extract meaningful info
+  const parseDescription = (desc) => {
+    if (!desc) return { title: isCredit ? 'Top Up' : 'Payment', subtitle: '' };
+    
+    // Check for order payment
+    if (desc.toLowerCase().includes('order from')) {
+      const vendorMatch = desc.match(/order from (.+)/i);
+      return {
+        title: vendorMatch ? vendorMatch[1] : 'Food Order',
+        subtitle: 'Order Payment',
+        icon: '🍽️'
+      };
+    }
+    
+    // Check for top-up
+    if (desc.toLowerCase().includes('top-up') || desc.toLowerCase().includes('topup')) {
+      return {
+        title: 'Wallet Top Up',
+        subtitle: desc.includes('Demo') || desc.includes('Sandbox') ? 'Demo Mode' : 'Balance Added',
+        icon: '💳'
+      };
+    }
+    
+    // Check for refund
+    if (desc.toLowerCase().includes('refund')) {
+      return {
+        title: 'Order Refund',
+        subtitle: desc,
+        icon: '↩️'
+      };
+    }
+    
+    return { title: desc, subtitle: '', icon: isCredit ? '📥' : '📤' };
+  };
+  
+  const { title, subtitle, icon } = parseDescription(transaction.description);
+  
+  // Format date more readably
+  const formatTxDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+  
   return (
-    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all border border-gray-100">
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${
-          transaction.type === 'credit' 
-            ? 'bg-gradient-to-br from-green-100 to-green-200' 
-            : 'bg-gradient-to-br from-red-100 to-red-200'
+    <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all border border-slate-200">
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+          isCredit 
+            ? 'bg-green-50 border border-green-200' 
+            : 'bg-rose-50 border border-rose-200'
         }`}>
-          {transaction.type === 'credit' ? (
-            <FaPlus className="text-green-600 text-lg" />
+          {isCredit ? (
+            <FaArrowDown className="text-green-600 text-sm" />
           ) : (
-            <FaMinus className="text-red-600 text-lg" />
+            <FaArrowUp className="text-rose-600 text-sm" />
           )}
         </div>
         <div>
-          <p className="font-semibold text-gray-900">{transaction.description}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{transaction.date}</p>
+          <p className="font-medium text-slate-900 text-sm flex items-center gap-1.5">
+            {icon && <span className="text-xs">{icon}</span>}
+            {title}
+          </p>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            {subtitle && <span>{subtitle}</span>}
+            {subtitle && <span>•</span>}
+            <span>{formatTxDate(transaction.date || transaction.created_at)}</span>
+          </div>
         </div>
       </div>
       <div className="text-right">
-        <p className={`text-xl font-bold ${
-          transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
+        <p className={`text-base font-semibold ${
+          isCredit ? 'text-green-600' : 'text-rose-600'
         }`}>
-          {transaction.type === 'credit' ? '+' : '-'}₱{transaction.amount.toFixed(2)}
+          {isCredit ? '+' : '-'}₱{transaction.amount.toFixed(2)}
         </p>
-        <span className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold mt-1">
+        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium capitalize ${
+          transaction.status === 'completed' 
+            ? 'bg-green-50 text-green-700 border border-green-200' 
+            : transaction.status === 'pending'
+            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+            : 'bg-slate-100 text-slate-600 border border-slate-200'
+        }`}>
           {transaction.status}
         </span>
       </div>
@@ -93,23 +160,24 @@ const TransactionItem = ({ transaction }) => {
 // --- components/TransactionHistory.jsx ---
 const TransactionHistory = ({ transactions }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
-          <FaHistory className="text-gray-600" />
+    <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
+          <FaHistory className="text-slate-600 text-sm" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900">Transaction History</h3>
+        <h3 className="text-lg font-semibold text-slate-900">Transaction History</h3>
       </div>
 
       {transactions.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FaHistory className="text-gray-400 text-2xl" />
+        <div className="text-center py-10">
+          <div className="w-14 h-14 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <FaHistory className="text-slate-400 text-xl" />
           </div>
-          <p className="text-gray-500 font-medium">No transactions yet</p>
+          <p className="text-slate-500 font-medium text-sm">No transactions yet</p>
+          <p className="text-slate-400 text-xs mt-1">Top up your wallet to get started</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {transactions.map(transaction => (
             <TransactionItem key={transaction.id} transaction={transaction} />
           ))}
@@ -120,35 +188,48 @@ const TransactionHistory = ({ transactions }) => {
 };
 
 // --- components/TopUpModal.jsx ---
-const TopUpModal = ({ isOpen, onClose, onSubmit }) => {
+const TopUpModal = ({ isOpen, onClose, onSandboxTopUp }) => {
   const [topUpAmount, setTopUpAmount] = useState('');
-  const [selectedMethod, setSelectedMethod] = useState('gcash');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const paymentMethods = [
-    { id: 'gcash', name: 'GCash', logo: '/assets/gcashlogo.png' },
-    { id: 'maya', name: 'Maya', logo: '/assets/mayalogo.png' }
-  ];
+  const [sandboxPin, setSandboxPin] = useState('');
+  const [step, setStep] = useState(1); // 1 = amount, 2 = confirm
 
   const quickAmounts = [100, 200, 500, 1000];
 
-  const validateAndSubmit = async () => {
+  const handleClose = () => {
+    if (!isSubmitting) {
+      setTopUpAmount('');
+      setError('');
+      setSandboxPin('');
+      setStep(1);
+      onClose();
+    }
+  };
+
+  const handleContinue = () => {
     const amount = parseFloat(topUpAmount);
-    
-    // Client-side validation
     if (!topUpAmount || isNaN(amount)) {
       setError('Please enter a valid amount');
       return;
     }
-    
-    if (amount < 50) {
-      setError('Minimum top-up amount is ₱50');
+    if (amount < 1) {
+      setError('Minimum amount is ₱1');
       return;
     }
+    if (amount > 100000) {
+      setError('Maximum amount is ₱100,000');
+      return;
+    }
+    setError('');
+    setStep(2);
+  };
+
+  const handleConfirmTopUp = async () => {
+    const amount = parseFloat(topUpAmount);
     
-    if (amount > 10000) {
-      setError('Maximum top-up amount is ₱10,000');
+    if (!sandboxPin || sandboxPin.length < 4) {
+      setError('Please enter the 4-digit demo PIN');
       return;
     }
 
@@ -156,10 +237,10 @@ const TopUpModal = ({ isOpen, onClose, onSubmit }) => {
     setIsSubmitting(true);
 
     try {
-      await onSubmit(amount, selectedMethod);
-      // Reset form on success
+      await onSandboxTopUp(amount, sandboxPin);
       setTopUpAmount('');
-      setSelectedMethod('gcash');
+      setSandboxPin('');
+      setStep(1);
     } catch (err) {
       setError(err.message || 'Failed to process top-up');
     } finally {
@@ -167,19 +248,9 @@ const TopUpModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
-  const handleClose = () => {
-    if (!isSubmitting) {
-      setTopUpAmount('');
-      setSelectedMethod('gcash');
-      setError('');
-      onClose();
-    }
-  };
-
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={handleClose}>
-        {/* Backdrop */}
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -189,10 +260,9 @@ const TopUpModal = ({ isOpen, onClose, onSubmit }) => {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" />
         </Transition.Child>
 
-        {/* Modal container */}
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <Transition.Child
@@ -204,154 +274,178 @@ const TopUpModal = ({ isOpen, onClose, onSubmit }) => {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-xl bg-white shadow-xl transition-all">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-5 relative">
-                  <Dialog.Title className="text-2xl font-bold text-white">
+                <div className="bg-gradient-to-r from-[#0d3d23] to-[#1a5d3a] px-5 py-4 relative">
+                  <Dialog.Title className="text-lg font-semibold text-white flex items-center gap-2">
+                    <FaWallet className="text-green-200" />
                     Top Up Wallet
                   </Dialog.Title>
-                  <p className="text-green-100 text-sm mt-1">Add funds to your wallet securely</p>
+                  <p className="text-green-100/80 text-xs mt-0.5">Demo Mode - For demonstration only</p>
                   <button
                     onClick={handleClose}
                     disabled={isSubmitting}
-                    className="absolute top-5 right-5 w-9 h-9 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50"
+                    className="absolute top-4 right-4 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50"
                   >
-                    <FaTimes className="text-white" />
+                    <FaTimes className="text-white text-sm" />
                   </button>
                 </div>
 
-                {/* Content */}
-                <div className="p-6 space-y-5">
-                  {/* Amount Input */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Enter Amount
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-bold text-lg">
-                        ₱
-                      </span>
-                      <input
-                        type="number"
-                        value={topUpAmount}
-                        onChange={(e) => {
-                          setTopUpAmount(e.target.value);
-                          setError('');
-                        }}
-                        className={`w-full pl-10 pr-4 py-4 border-2 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent text-xl font-bold transition-all ${
-                          error ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                        placeholder="0.00"
-                        min="50"
-                        max="10000"
-                        step="50"
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                    {error ? (
-                      <p className="text-xs text-red-600 mt-2 font-semibold flex items-center gap-1">
-                        <span>⚠️</span>
-                        {error}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Min: ₱50 | Max: ₱10,000
-                      </p>
-                    )}
-                  </div>
+                <div className="p-5">
+                  {step === 1 ? (
+                    /* Step 1: Enter Amount */
+                    <div className="space-y-4">
+                      {/* Demo Banner */}
+                      <div className="flex items-center gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <FaFlask className="text-amber-600 text-sm flex-shrink-0" />
+                        <p className="text-xs text-amber-700">
+                          <span className="font-semibold">Demo Mode:</span> This simulates a wallet top-up for testing purposes. No real payment is processed.
+                        </p>
+                      </div>
 
-                  {/* Quick Amount Buttons */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Quick Select
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {quickAmounts.map(amount => (
+                      {/* Amount Input */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          Enter Amount
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-500 font-semibold">
+                            ₱
+                          </span>
+                          <input
+                            type="number"
+                            value={topUpAmount}
+                            onChange={(e) => {
+                              setTopUpAmount(e.target.value);
+                              setError('');
+                            }}
+                            className={`w-full pl-9 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#0d3d23]/20 focus:border-[#0d3d23] text-lg font-semibold transition-all ${
+                              error ? 'border-rose-300 bg-rose-50' : 'border-slate-200'
+                            }`}
+                            placeholder="0.00"
+                            min="1"
+                            max="100000"
+                            disabled={isSubmitting}
+                          />
+                        </div>
+                        {error ? (
+                          <p className="text-xs text-rose-600 mt-1.5 font-medium">{error}</p>
+                        ) : (
+                          <p className="text-xs text-slate-500 mt-1.5">Min: ₱1 | Max: ₱100,000</p>
+                        )}
+                      </div>
+
+                      {/* Quick Amounts */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          Quick Select
+                        </label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {quickAmounts.map(amount => (
+                            <button
+                              key={amount}
+                              onClick={() => {
+                                setTopUpAmount(amount.toString());
+                                setError('');
+                              }}
+                              disabled={isSubmitting}
+                              className={`py-2.5 rounded-lg font-medium text-sm transition-all border ${
+                                topUpAmount === amount.toString()
+                                  ? 'bg-[#0d3d23] text-white border-[#0d3d23]'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
+                              } disabled:opacity-50`}
+                            >
+                              ₱{amount}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-2">
                         <button
-                          key={amount}
-                          onClick={() => {
-                            setTopUpAmount(amount.toString());
+                          onClick={handleClose}
+                          disabled={isSubmitting}
+                          className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-all font-medium text-sm disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleContinue}
+                          disabled={!topUpAmount || isSubmitting}
+                          className="flex-1 px-4 py-2.5 bg-[#0d3d23] text-white rounded-lg hover:bg-[#1a5d3a] transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Continue
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Step 2: Confirm with PIN */
+                    <div className="space-y-4">
+                      {/* Summary */}
+                      <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm text-slate-500">Top-up Amount</span>
+                          <span className="text-2xl font-bold text-slate-900">₱{parseFloat(topUpAmount).toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <FaShieldAlt className="text-[#0d3d23]" />
+                          <span>Secure demo transaction</span>
+                        </div>
+                      </div>
+
+                      {/* PIN Input */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          Enter Demo PIN to Confirm
+                        </label>
+                        <input
+                          type="password"
+                          maxLength={4}
+                          value={sandboxPin}
+                          onChange={(e) => {
+                            setSandboxPin(e.target.value.replace(/\D/g, ''));
                             setError('');
                           }}
+                          className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#0d3d23]/20 focus:border-[#0d3d23] text-center text-xl font-bold tracking-[0.5em]"
+                          placeholder="••••"
                           disabled={isSubmitting}
-                          className="px-4 py-3 bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:from-green-100 hover:to-green-200 hover:text-green-700 transition-all font-bold text-sm shadow-sm hover:shadow-md disabled:opacity-50"
+                        />
+                        <p className="text-xs text-slate-500 mt-1.5 text-center">Demo PIN: <span className="font-mono font-semibold">1234</span></p>
+                        {error && (
+                          <p className="text-xs text-rose-600 mt-1.5 font-medium text-center">{error}</p>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={() => { setStep(1); setError(''); setSandboxPin(''); }}
+                          disabled={isSubmitting}
+                          className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-all font-medium text-sm disabled:opacity-50"
                         >
-                          ₱{amount}
+                          Back
                         </button>
-                      ))}
+                        <button
+                          onClick={handleConfirmTopUp}
+                          disabled={!sandboxPin || sandboxPin.length < 4 || isSubmitting}
+                          className="flex-1 px-4 py-2.5 bg-[#0d3d23] text-white rounded-lg hover:bg-[#1a5d3a] transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <FaSpinner className="animate-spin text-sm" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <FaCheckCircle className="text-sm" />
+                              Confirm Top Up
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Payment Method */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Payment Method
-                    </label>
-                    <div className="space-y-2">
-                      {paymentMethods.map(method => {
-                        const isSelected = selectedMethod === method.id;
-                        return (
-                          <button
-                            key={method.id}
-                            onClick={() => setSelectedMethod(method.id)}
-                            disabled={isSubmitting}
-                            className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
-                              isSelected
-                                ? 'border-green-500 bg-green-50 shadow-md'
-                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            } disabled:opacity-50`}
-                          >
-                            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm overflow-hidden">
-                              <img src={method.logo} alt={`${method.name} logo`} className="max-w-10 max-h-10 object-contain" />
-                            </div>
-                            <div className="flex-1 text-left">
-                              <span className="font-semibold text-gray-900 block">
-                                {method.name}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                Redirects to {method.name} app
-                              </span>
-                            </div>
-                            {isSelected && (
-                              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      onClick={handleClose}
-                      disabled={isSubmitting}
-                      className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={validateAndSubmit}
-                      disabled={!topUpAmount || isSubmitting}
-                      className="flex-1 px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <FaSpinner className="animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <FaPlus />
-                          Confirm Top Up
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  )}
                 </div>
               </Dialog.Panel>
             </Transition.Child>
@@ -372,6 +466,7 @@ export default function MyWallet() {
   const [loading, setLoading] = useState(true);
   const [isToppingUp, setIsToppingUp] = useState(false);
   const [error, setError] = useState(null);
+  const [sandboxMode, setSandboxMode] = useState(false);
   
   const topUpModal = useModal();
 
@@ -382,6 +477,20 @@ export default function MyWallet() {
     if (token) h.Authorization = `Bearer ${token}`;
     if (user?.id) h['x-user-id'] = user.id;
     return h;
+  };
+
+  // Check if sandbox mode is enabled
+  const checkSandboxStatus = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/wallet/sandbox/status`);
+      if (res.ok) {
+        const data = await res.json();
+        setSandboxMode(data.sandbox_mode === true);
+      }
+    } catch (e) {
+      // Sandbox endpoint might not exist, default to false
+      setSandboxMode(false);
+    }
   };
 
   const fetchWallet = async () => {
@@ -405,7 +514,10 @@ export default function MyWallet() {
     }
   };
 
-  useEffect(() => { fetchWallet(); }, []);
+  useEffect(() => { 
+    fetchWallet(); 
+    checkSandboxStatus();
+  }, []);
 
   const handleTopUp = async (amount, method) => {
     setIsToppingUp(true);
@@ -453,12 +565,14 @@ export default function MyWallet() {
         const poll = async () => {
           if (Date.now() - start > 90_000) return; // stop after 90s
           try { await fetchWallet(); } catch (_) {}
+          try { window.dispatchEvent(new CustomEvent('wallet:balance-updated')); } catch (_) {}
           setTimeout(poll, 5000);
         };
         setTimeout(poll, 5000);
       } else {
         // Fallback: no gateway returned, just refresh wallet
         await fetchWallet();
+        try { window.dispatchEvent(new CustomEvent('wallet:balance-updated')); } catch (_) {}
         toast.success(`Top-up request created.`, { duration: 3000 });
       }
     } catch (error) {
@@ -470,8 +584,60 @@ export default function MyWallet() {
     }
   };
 
+  // Sandbox top-up handler (instant, for testing)
+  const handleSandboxTopUp = async (amount, pin) => {
+    setIsToppingUp(true);
+    topUpModal.closeModal();
+
+    const loadingToast = toast.loading('Processing sandbox top-up...');
+
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!user?.id) throw new Error('No user id');
+      
+      const payload = {
+        amount,
+        pin,
+        description: `Sandbox test top-up`,
+        userId: user.id,
+      };
+      
+      const res = await fetch(`${API_BASE}/wallet/sandbox/top-up`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ detail: 'Sandbox top-up failed' }));
+        throw new Error(errData.detail || 'Sandbox top-up failed');
+      }
+      
+      const data = await res.json();
+      toast.dismiss(loadingToast);
+      
+      // Update balance immediately
+      if (data.wallet?.balance !== undefined) {
+        setBalance(data.wallet.balance);
+      }
+      
+      // Refresh transactions
+      await fetchWallet();
+      try { window.dispatchEvent(new CustomEvent('wallet:balance-updated')); } catch (_) {}
+      
+      toast.success(`🧪 Test top-up of ₱${amount.toFixed(2)} completed!`, { duration: 4000 });
+      
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      toast.error(error.message || 'Failed to process sandbox top-up.');
+      throw error;
+    } finally {
+      setIsToppingUp(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-emerald-50/30 p-6">
+    <div className="min-h-screen bg-slate-50/80">
       <Toaster
         position="top-right"
         toastOptions={{
@@ -479,36 +645,51 @@ export default function MyWallet() {
           style: {
             background: '#fff',
             color: '#333',
-            fontWeight: '600',
-            padding: '16px',
-            borderRadius: '12px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+            fontWeight: '500',
+            padding: '14px 16px',
+            borderRadius: '10px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            fontSize: '14px'
           },
           success: {
             iconTheme: {
-              primary: '#10b981',
+              primary: '#0d3d23',
               secondary: '#fff',
             },
           },
         }}
       />
 
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-              <FaWallet className="text-white text-xl" />
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200/60">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#0d3d23] to-[#1a5d3a] rounded-xl flex items-center justify-center shadow-sm">
+              <FaWallet className="text-lg text-white" />
             </div>
-            My Wallet
-          </h1>
-          <p className="text-gray-600 ml-15">Manage your wallet balance and transactions</p>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">My Wallet</h1>
+              <p className="text-slate-500 text-sm">Manage your balance and transactions</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        {/* Demo Mode Info */}
+        <div className="mb-5 flex items-center gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <FaFlask className="text-amber-600 text-sm flex-shrink-0" />
+          <p className="text-xs text-amber-700">
+            <span className="font-semibold">Demo Mode:</span> This wallet uses simulated transactions for demonstration purposes. PIN: <span className="font-mono font-semibold">1234</span>
+          </p>
         </div>
 
-        {/* Balance Card */}
+        {/* Error Display */}
         {error && (
-          <div className="mb-4 bg-white border-2 border-red-200 rounded-xl p-4 text-center text-sm text-red-600 font-semibold">{error}</div>
+          <div className="mb-4 bg-white border border-rose-200 rounded-lg p-4 text-center text-sm text-rose-600 font-medium">{error}</div>
         )}
+        
+        {/* Balance Card */}
         <BalanceCard
           balance={balance}
           onTopUpClick={topUpModal.openModal}
@@ -519,7 +700,7 @@ export default function MyWallet() {
         <TopUpModal
           isOpen={topUpModal.isOpen}
           onClose={topUpModal.closeModal}
-          onSubmit={handleTopUp}
+          onSandboxTopUp={handleSandboxTopUp}
         />
 
         {/* Transaction History */}

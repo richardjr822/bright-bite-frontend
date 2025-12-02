@@ -2,6 +2,17 @@ import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { FaShoppingBag, FaArrowUp, FaClock, FaUtensils, FaCheckCircle } from 'react-icons/fa';
 
+// Format order number to short readable format (e.g., #0001)
+const formatOrderNumber = (orderId) => {
+  if (!orderId) return '#0000';
+  const idStr = String(orderId);
+  const numericPart = idStr.replace(/[^0-9]/g, '');
+  if (numericPart.length >= 3) {
+    return `#${numericPart.slice(-4).padStart(4, '0')}`;
+  }
+  return `#${idStr.slice(-4).toUpperCase()}`;
+};
+
 export default function VendorOverview() {
   const { vendorData } = useOutletContext() || { vendorData: null };
 
@@ -79,7 +90,9 @@ export default function VendorOverview() {
             <tbody className="bg-white divide-y divide-gray-200">
               {vendorData?.recentOrders?.slice(0, 5).map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{order.id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm font-bold text-[#0d3d23]">{formatOrderNumber(order.id)}</span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{order.customerName}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{order.itemCount} items</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">₱{order.total.toFixed(2)}</td>

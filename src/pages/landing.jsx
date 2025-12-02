@@ -42,6 +42,60 @@ export default function Landing() {
         .animate-fadeIn {
           animation: fadeIn 0.8s ease-out forwards;
         }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .btn-shimmer {
+          position: relative;
+          overflow: hidden;
+        }
+        .btn-shimmer::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+          transform: translateX(-100%);
+        }
+        .btn-shimmer:hover::after {
+          animation: shimmer 0.75s ease-in-out;
+        }
+        @keyframes gradient-shift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient-shift 8s ease infinite;
+        }
+        @keyframes glow-pulse {
+          0%, 100% { box-shadow: 0 0 20px rgba(26, 93, 58, 0.15); }
+          50% { box-shadow: 0 0 40px rgba(26, 93, 58, 0.25); }
+        }
+        .animate-glow {
+          animation: glow-pulse 3s ease-in-out infinite;
+        }
+        .card-3d {
+          transform-style: preserve-3d;
+          perspective: 1000px;
+        }
+        .card-3d:hover {
+          transform: translateY(-8px) rotateX(2deg);
+        }
+        .text-gradient {
+          background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-main) 50%, var(--brand-light) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        .glass {
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+        }
       `}</style>
 
       {/* Enhanced Background accents */}
@@ -224,15 +278,15 @@ export default function Landing() {
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                 <Link
                   to="/register"
-                  className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-white font-semibold shadow-lg transition-all transform hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-[var(--brand-dark)] hover:bg-[var(--brand-main)]"
+                  className="btn-shimmer inline-flex items-center gap-2 px-7 py-4 rounded-xl text-white font-semibold shadow-lg transition-all duration-300 transform hover:-translate-y-1.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-gradient-to-r from-[var(--brand-dark)] to-[var(--brand-main)] hover:from-[var(--brand-main)] hover:to-[var(--brand-light)] animate-glow"
                   aria-label="Get Started"
                 >
                   Get Started Free
-                  <FaArrowRight className="w-4 h-4" />
+                  <FaArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                 </Link>
                 <a
                   href="#what-we-offer"
-                  className="inline-flex items-center gap-2 px-6 py-4 rounded-xl font-medium border-2 border-neutral-300 transition-all hover:border-[var(--brand-main)] hover:text-[var(--brand-main)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 text-neutral-700"
+                  className="group inline-flex items-center gap-2 px-7 py-4 rounded-xl font-medium border-2 border-neutral-300 transition-all duration-300 hover:border-[var(--brand-main)] hover:text-[var(--brand-main)] hover:shadow-lg hover:bg-[var(--brand-main)]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 text-neutral-700"
                 >
                   Learn More
                 </a>
@@ -309,10 +363,11 @@ export default function Landing() {
             ].map((f, i) => (
               <article
                 key={f.title}
-                className="group relative rounded-2xl p-8 bg-gradient-to-br from-white to-neutral-50 border border-neutral-200 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
+                className="group relative rounded-2xl p-8 bg-gradient-to-br from-white via-white to-neutral-50/80 border border-neutral-200/80 shadow-sm hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-3 hover:border-[var(--brand-main)]/30"
                 aria-labelledby={`feature-${i}`}
+                style={{ animationDelay: `${i * 0.1}s` }}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-main)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-main)]/5 via-transparent to-[var(--brand-light)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
                 
                 <div
                   className="relative w-14 h-14 rounded-xl flex items-center justify-center mb-6 text-white shadow-lg transform group-hover:scale-110 transition-transform duration-300"
@@ -485,14 +540,14 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
               to="/register"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-[var(--brand-dark)] font-semibold shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/20"
+              className="btn-shimmer group inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-[var(--brand-dark)] font-semibold shadow-xl transition-all duration-300 transform hover:-translate-y-1.5 hover:shadow-2xl hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/20"
             >
               Get Started Free
-              <FaArrowRight className="w-4 h-4" />
+              <FaArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
             <a
               href="#what-we-offer"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-transparent border-2 border-white text-white font-semibold transition-all hover:bg-white hover:text-[var(--brand-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/20"
+              className="group inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white/10 backdrop-blur-sm border-2 border-white/50 text-white font-semibold transition-all duration-300 hover:bg-white hover:text-[var(--brand-dark)] hover:border-white hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/20"
             >
               Learn More
             </a>

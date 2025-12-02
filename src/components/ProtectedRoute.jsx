@@ -45,8 +45,8 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
     const roleRoutes = {
       'admin': '/admin',
       'vendor': '/vendor',
-      'staff': '/staff/dashboard',
-      'student': '/meal-planner'
+      'staff': '/delivery-staff',
+      'student': '/dashboard'
     };
     
     const redirectPath = roleRoutes[user.role] || '/login';

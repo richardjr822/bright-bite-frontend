@@ -1,8 +1,12 @@
-import React, { useEffect, useState, Fragment, useRef } from "react";
+import React, { useEffect, useState, Fragment, useRef, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Tab } from "@headlessui/react";
 import Modal from "react-modal";
-import { FaFire, FaClock, FaDrumstickBite, FaBreadSlice, FaTint, FaTimes, FaEdit } from "react-icons/fa";
+import { 
+  FaFire, FaClock, FaDrumstickBite, FaBreadSlice, FaTint, FaTimes, FaEdit,
+  FaHeart, FaRegHeart, FaSync, FaCheckCircle, FaChartPie, FaCalendarAlt,
+  FaPrint, FaDownload, FaUtensils, FaBolt, FaLeaf, FaArrowRight, FaPlus
+} from "react-icons/fa";
 import { API_BASE } from "../../api";
 
 Modal.setAppElement("#root");
@@ -196,45 +200,223 @@ const normalizeDbPrefs = (db = {}) => ({
 
 // ============== SUB-COMPONENTS ==============
 
-// Planner Header Component
-const PlannerHeader = ({ preferences, onEditPreferences }) => {
+// Enhanced Calorie Progress Ring
+const CalorieRing = ({ current, target, size = 120 }) => {
+  const percentage = Math.min((current / target) * 100, 100);
+  const strokeWidth = 8;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (percentage / 100) * circumference;
+  const color = percentage > 100 ? '#ef4444' : percentage > 80 ? '#f59e0b' : '#22c55e';
+  
   return (
-    <header className="bg-white border-2 border-gray-200 rounded-2xl p-4 sm:p-6 mb-6 shadow-sm">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 flex items-center gap-3">
-            <span>🍽️</span>
-            Your Personalized Meal Plan
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 px-2 py-1.5 rounded-lg">
-              <span className="font-semibold text-gray-600">Goal:</span>
-              <span className="font-bold text-green-700 capitalize">{preferences.goal}</span>
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg className="transform -rotate-90" width={size} height={size}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          strokeWidth={strokeWidth}
+          stroke="#e5e7eb"
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          strokeWidth={strokeWidth}
+          stroke={color}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-all duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold text-gray-900">{Math.round(percentage)}%</span>
+        <span className="text-xs text-gray-500">of goal</span>
+      </div>
+    </div>
+  );
+};
+
+// Daily Stats Card - Synced with Nutrition Tracker
+const DailyStatsCard = ({ dayMeals, preferences }) => {
+  const [loggedStats, setLoggedStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  // Fetch actual logged meals from nutrition tracker
+  useEffect(() => {
+    const fetchLoggedMeals = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/meal-plans/meals/summary`, {
+          headers: authHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const totals = data.summary?.totals || {};
+          setLoggedStats({
+            calories: Math.round(totals.calories || 0),
+            protein: Math.round(totals.protein || 0),
+            carbs: Math.round(totals.carbs || 0),
+            fats: Math.round(totals.fats || 0),
+            count: data.summary?.count || 0
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch logged stats:", e);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    fetchLoggedMeals();
+  }, []);
+
+  // Planned meals stats (for reference)
+  const plannedStats = useMemo(() => {
+    const totals = dayMeals.reduce((acc, m) => ({
+      calories: acc.calories + (m.calories || 0),
+      protein: acc.protein + (m.macros?.protein || 0),
+      carbs: acc.carbs + (m.macros?.carbs || 0),
+      fats: acc.fats + (m.macros?.fats || 0),
+      prepTime: acc.prepTime + (m.prepTime || 0)
+    }), { calories: 0, protein: 0, carbs: 0, fats: 0, prepTime: 0 });
+    return totals;
+  }, [dayMeals]);
+
+  const stats = loggedStats || { calories: 0, protein: 0, carbs: 0, fats: 0, count: 0 };
+  const calorieTarget = preferences?.calorieTarget || 2000;
+  const remaining = calorieTarget - stats.calories;
+
+  return (
+    <div className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-2xl p-4 sm:p-6 mb-6 shadow-sm">
+      <div className="flex flex-col lg:flex-row items-center gap-6">
+        <div className="flex-shrink-0">
+          <CalorieRing current={stats.calories} target={calorieTarget} />
+        </div>
+        
+        <div className="flex-1 w-full">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Today's Progress</h3>
+              <p className="text-xs text-gray-500">
+                {loadingStats ? 'Loading...' : `${stats.count} meal${stats.count !== 1 ? 's' : ''} logged`}
+              </p>
             </div>
-            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-2 py-1.5 rounded-lg">
-              <span className="text-gray-600">Meals/day:</span>
-              <span className="font-bold text-blue-700">{preferences.mealsPerDay}</span>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+              remaining > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}>
+              {remaining > 0 ? `${remaining} kcal remaining` : `${Math.abs(remaining)} kcal over`}
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-center">
+              <FaFire className="mx-auto text-orange-500 mb-1" />
+              <p className="text-xs text-orange-600 font-medium">Logged</p>
+              <p className="text-lg font-bold text-orange-700">{stats.calories}</p>
+              <p className="text-[10px] text-orange-500">/ {plannedStats.calories} planned</p>
             </div>
-            <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 px-2 py-1.5 rounded-lg">
-              <span className="text-gray-600">Budget:</span>
-              <span className="font-bold text-purple-700">{preferences.dailyBudget || "—"} PHP</span>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
+              <FaDrumstickBite className="mx-auto text-red-500 mb-1" />
+              <p className="text-xs text-red-600 font-medium">Protein</p>
+              <p className="text-lg font-bold text-red-700">{stats.protein}g</p>
+              <p className="text-[10px] text-red-500">/ {plannedStats.protein}g planned</p>
             </div>
-            <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 px-2 py-1.5 rounded-lg">
-              <span className="text-gray-600">Target:</span>
-              <span className="font-bold text-orange-700">{preferences.calorieTarget} kcal</span>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-center">
+              <FaBreadSlice className="mx-auto text-yellow-500 mb-1" />
+              <p className="text-xs text-yellow-600 font-medium">Carbs</p>
+              <p className="text-lg font-bold text-yellow-700">{stats.carbs}g</p>
+              <p className="text-[10px] text-yellow-500">/ {plannedStats.carbs}g planned</p>
             </div>
-            <div className="flex items-center gap-2 bg-pink-50 border border-pink-200 px-2 py-1.5 rounded-lg">
-              <span className="text-gray-600">Macro:</span>
-              <span className="font-bold text-pink-700 capitalize">{preferences.macroPreference}</span>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+              <FaTint className="mx-auto text-blue-500 mb-1" />
+              <p className="text-xs text-blue-600 font-medium">Fats</p>
+              <p className="text-lg font-bold text-blue-700">{stats.fats}g</p>
+              <p className="text-[10px] text-blue-500">/ {plannedStats.fats}g planned</p>
             </div>
           </div>
+          
+          <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <FaClock className="text-gray-400" />
+              <span>Prep time: <strong>{plannedStats.prepTime} min</strong></span>
+            </div>
+            <a href="/nutrition" className="text-green-600 hover:text-green-700 text-xs font-medium flex items-center gap-1">
+              View Tracker <FaArrowRight className="text-[10px]" />
+            </a>
+          </div>
         </div>
-        <button
-          onClick={onEditPreferences}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold shadow"
-        >
-          <FaEdit /> Edit Preferences
-        </button>
+      </div>
+    </div>
+  );
+};
+
+// Planner Header Component
+const PlannerHeader = ({ preferences, onEditPreferences, onRegenerate, regenerating }) => {
+  const goalIcons = { gain: '💪', lose: '🔥', maintain: '⚖️' };
+  const goalColors = { gain: 'from-blue-500 to-indigo-600', lose: 'from-orange-500 to-red-500', maintain: 'from-green-500 to-emerald-600' };
+  
+  return (
+    <header className="bg-gradient-to-br from-white via-white to-green-50/50 border-2 border-gray-200 rounded-2xl p-4 sm:p-6 mb-6 shadow-lg overflow-hidden relative">
+      {/* Decorative background */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-100/50 to-emerald-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+      
+      <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${goalColors[preferences.goal] || goalColors.maintain} flex items-center justify-center text-2xl shadow-lg`}>
+              {goalIcons[preferences.goal] || '🍽️'}
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Your Meal Plan
+              </h1>
+              <p className="text-sm text-gray-500">Personalized for your {preferences.goal} goal</p>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {[
+              { label: 'Goal', value: preferences.goal, color: 'green', icon: FaLeaf },
+              { label: 'Meals', value: `${preferences.mealsPerDay}/day`, color: 'blue', icon: FaUtensils },
+              { label: 'Target', value: `${preferences.calorieTarget} kcal`, color: 'orange', icon: FaFire },
+              { label: 'Macro', value: preferences.macroPreference, color: 'purple', icon: FaChartPie },
+              { label: 'Budget', value: preferences.dailyBudget ? `₱${preferences.dailyBudget}` : '—', color: 'pink', icon: FaBolt }
+            ].map((item, i) => (
+              <div 
+                key={i}
+                className={`group flex items-center gap-2 bg-${item.color}-50 border border-${item.color}-200 px-3 py-2 rounded-xl transition-all duration-300 hover:shadow-md hover:-translate-y-0.5`}
+              >
+                <item.icon className={`text-${item.color}-500 text-sm`} />
+                <span className="text-xs text-gray-500 hidden sm:inline">{item.label}:</span>
+                <span className={`text-sm font-bold text-${item.color}-700 capitalize`}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={onRegenerate}
+            disabled={regenerating}
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold shadow-lg transition-all duration-300 ${
+              regenerating
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-green-400 hover:text-green-600 hover:-translate-y-0.5'
+            }`}
+          >
+            <FaSync className={regenerating ? 'animate-spin' : ''} />
+            {regenerating ? 'Generating...' : 'New Plan'}
+          </button>
+          <button
+            onClick={onEditPreferences}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+          >
+            <FaEdit /> Preferences
+          </button>
+        </div>
       </div>
     </header>
   );
@@ -299,9 +481,13 @@ const MealDetailsModal = ({ isOpen, onClose, meal }) => {
   const color = colors[meal.type] || "bg-gray-500";
   const emoji = emojis[meal.type] || "🍴";
 
+  const [logging, setLogging] = React.useState(false);
+  const [logged, setLogged] = React.useState(false);
+
   // Optional: log to intake meals table
   const addToIntake = async () => {
     try {
+      setLogging(true);
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       if (!user?.id) return;
       const payload = {
@@ -314,13 +500,23 @@ const MealDetailsModal = ({ isOpen, onClose, meal }) => {
         fats: meal.macros.fats,
         meal_time: new Date().toISOString()
       };
-      await fetch(`${API_BASE}/meal-plans/meals`, {
+      const res = await fetch(`${API_BASE}/meal-plans/meals`, {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify(payload)
       });
-    } catch {}
-    onClose();
+      if (res.ok) {
+        setLogged(true);
+        setTimeout(() => {
+          onClose();
+          setLogged(false);
+        }, 1000);
+      }
+    } catch (e) {
+      console.error("Failed to log meal:", e);
+    } finally {
+      setLogging(false);
+    }
   };
 
   return (
@@ -365,13 +561,24 @@ const MealDetailsModal = ({ isOpen, onClose, meal }) => {
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3">
             <button
               onClick={addToIntake}
-              className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold shadow"
+              disabled={logging || logged}
+              className={`flex-1 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm font-semibold shadow flex items-center justify-center gap-2 transition-all ${
+                logged 
+                  ? 'bg-green-100 text-green-700 border-2 border-green-300' 
+                  : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-lg'
+              }`}
             >
-              Log This Meal
+              {logged ? (
+                <><FaCheckCircle /> Logged to Tracker!</>
+              ) : logging ? (
+                <><FaSync className="animate-spin" /> Logging...</>
+              ) : (
+                <><FaPlus /> Log This Meal</>
+              )}
             </button>
             <button
               onClick={onClose}
-              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold"
+              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors"
             >
               Close
             </button>
@@ -571,6 +778,22 @@ const MealPlannerPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-emerald-50/30">
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.4s ease-out forwards;
+        }
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateX(-10px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slideIn {
+          animation: slideIn 0.3s ease-out forwards;
+        }
+      `}</style>
       <div className="max-w-7xl mx-auto p-3 sm:p-6">
         {loading && (
           <div className="mb-4 flex justify-center">
@@ -602,23 +825,38 @@ const MealPlannerPage = () => {
                 localStorage.removeItem(PLAN_CACHE_KEY);
                 navigate("/meal-preferences");
               }}
+              onRegenerate={regenerate}
+              regenerating={regenerating}
             />
 
             <Tab.Group>
-              <div className="bg-white border-2 border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                <Tab.List className="flex border-b-2 border-gray-200 bg-gray-50 overflow-x-auto">
-                  {labels.map((d) => (
+              {({ selectedIndex }) => (
+              <div className="bg-white border-2 border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+                <Tab.List className="flex border-b-2 border-gray-100 bg-gradient-to-r from-gray-50 to-white overflow-x-auto">
+                  {labels.map((d, i) => (
                     <Tab key={d} as={Fragment}>
                       {({ selected }) => (
                         <button
-                          className={`flex-1 min-w-[80px] px-2 py-3 text-xs font-bold ${
+                          className={`relative flex-1 min-w-[80px] px-2 py-4 text-xs font-bold transition-all duration-300 ${
                             selected
-                              ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow"
-                              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                              ? "text-green-700 bg-white"
+                              : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                           }`}
                         >
-                          <span className="hidden sm:inline">{d}</span>
-                          <span className="sm:hidden">{d.slice(0,3)}</span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                              selected 
+                                ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg' 
+                                : 'bg-gray-200 text-gray-600'
+                            }`}>
+                              {d.slice(0,1)}
+                            </span>
+                            <span className="hidden sm:block">{d}</span>
+                            <span className="sm:hidden text-[10px]">{d.slice(0,3)}</span>
+                          </div>
+                          {selected && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 to-emerald-600" />
+                          )}
                         </button>
                       )}
                     </Tab>
@@ -627,23 +865,50 @@ const MealPlannerPage = () => {
                 <Tab.Panels className="p-3 sm:p-6">
                   {days.map((day, idx) => (
                     <Tab.Panel key={day}>
-                      <div className="mb-4">
-                        <h2 className="text-xl font-bold text-gray-900 mb-1">{labels[idx]}’s Meals</h2>
-                        <p className="text-sm text-gray-600">
-                          {(mealPlan[day]?.length || 0)} meals · Click any meal for details
-                        </p>
+                      {/* Daily Stats Card */}
+                      <DailyStatsCard dayMeals={mealPlan[day] || []} preferences={preferences} />
+                      
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                            <FaCalendarAlt className="text-green-500" />
+                            {labels[idx]}'s Meals
+                          </h2>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {(mealPlan[day]?.length || 0)} meals planned · Click any meal for details
+                          </p>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {mealPlan[day]?.map(meal => (
-                          <div key={meal.id} onClick={() => handleOpenModal(meal)}>
-                            <MealCard meal={meal} onClick={() => handleOpenModal(meal)} />
-                          </div>
-                        ))}
-                      </div>
+                      
+                      {mealPlan[day]?.length === 0 ? (
+                        <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          <FaUtensils className="mx-auto text-4xl text-gray-300 mb-3" />
+                          <p className="text-gray-500 font-medium">No meals planned for {labels[idx]}</p>
+                          <button 
+                            onClick={regenerate}
+                            className="mt-3 text-sm text-green-600 font-semibold hover:text-green-700"
+                          >
+                            Generate new plan →
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                          {mealPlan[day]?.map((meal, mealIdx) => (
+                            <div 
+                              key={meal.id} 
+                              className="animate-fadeIn"
+                              style={{ animationDelay: `${mealIdx * 0.05}s` }}
+                            >
+                              <MealCard meal={meal} onClick={() => handleOpenModal(meal)} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </Tab.Panel>
                   ))}
                 </Tab.Panels>
               </div>
+              )}
             </Tab.Group>
 
             <div className="mt-6 bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">

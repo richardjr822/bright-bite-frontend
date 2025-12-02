@@ -9,9 +9,38 @@ import {
   FaSpinner,
   FaCheckCircle,
   FaClock,
-  FaChartLine
+  FaChartLine,
+  FaUtensils
 } from 'react-icons/fa';
 import { API_BASE } from '../../api';
+
+// Format order/transaction number to short readable format (e.g., #0001)
+const formatOrderNumber = (orderId) => {
+  if (!orderId) return '#0000';
+  const idStr = String(orderId);
+  const numericPart = idStr.replace(/[^0-9]/g, '');
+  if (numericPart.length >= 3) {
+    return `#${numericPart.slice(-4).padStart(4, '0')}`;
+  }
+  return `#${idStr.slice(-4).toUpperCase()}`;
+};
+
+// Format relative time
+const formatRelativeTime = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
 
 export default function Earnings() {
   const [loading, setLoading] = useState(true);
@@ -43,8 +72,12 @@ export default function Earnings() {
       if (response.ok) {
         const data = await response.json();
         // Normalize to UI shape
-        const total = data.total_earnings || 0;
+        const total = Number(data.total_earnings || 0);
+        const walletGross = Number(data.wallet_earnings || 0);
+        const cashGross = Number(data.cash_earnings || 0);
         const platform_fees = total * 0.15;
+        // Payoutable comes only from wallet payments after fees (15%)
+        const payoutable = Math.max(0, walletGross * 0.85);
         const net = total - platform_fees;
         const monthList = Array.isArray(data.monthly_breakdown) ? data.monthly_breakdown : [];
         const monthly_breakdown = monthList.map(m => ({
@@ -61,6 +94,7 @@ export default function Earnings() {
           amount: t.total || t.amount || 0,
           fee: (t.total || t.amount || 0) * 0.15,
           net: (t.total || t.amount || 0) * 0.85,
+          payment_method: t.payment_method || t.method || '',
         }));
 
         setEarnings({
@@ -68,7 +102,9 @@ export default function Earnings() {
           platform_fees: platform_fees,
           net_earnings: net,
           pending_payout: 0,
-          available_balance: net,
+          available_balance: payoutable,
+          wallet_earnings: walletGross,
+          cash_earnings: cashGross,
           monthly_breakdown,
           recent_transactions,
           payout_history: [],
@@ -201,24 +237,24 @@ export default function Earnings() {
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">Net Earnings</p>
+            <p className="text-sm text-gray-600">Wallet Payoutable</p>
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <FaWallet className="text-blue-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-blue-600 mb-1">₱{earnings.net_earnings.toFixed(2)}</p>
-          <p className="text-xs text-gray-500">After fees</p>
+          <p className="text-3xl font-bold text-blue-600 mb-1">₱{earnings.available_balance.toFixed(2)}</p>
+          <p className="text-xs text-gray-500">Wallet after fees (payoutable)</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">Available Balance</p>
+            <p className="text-sm text-gray-600">Cash on Pickup (Audit)</p>
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <FaCheckCircle className="text-green-600" />
+              <FaDollarSign className="text-green-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-green-600 mb-1">₱{earnings.available_balance.toFixed(2)}</p>
-          <p className="text-xs text-gray-500">Ready for payout</p>
+          <p className="text-3xl font-bold text-green-600 mb-1">₱{(earnings.cash_earnings || 0).toFixed(2)}</p>
+          <p className="text-xs text-gray-500">Collected by vendor; not payoutable</p>
         </div>
       </div>
 
@@ -316,6 +352,9 @@ export default function Earnings() {
                   Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Payment
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Gross Amount
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -330,15 +369,28 @@ export default function Earnings() {
               {earnings.recent_transactions.map((transaction) => (
                 <tr key={transaction.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-gray-900">#{transaction.id}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
+                        <FaUtensils className="text-[#0d3d23] text-xs" />
+                      </div>
+                      <span className="text-sm font-bold text-[#0d3d23]">{formatOrderNumber(transaction.id)}</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-900">
                       {new Date(transaction.date).toLocaleDateString()}
-                    </span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {formatRelativeTime(transaction.date)}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{transaction.customer}</span>
+                    <span className="text-sm font-medium text-gray-900">{transaction.customer || 'Customer'}</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${transaction.payment_method === 'wallet' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
+                      {transaction.payment_method === 'wallet' ? 'Wallet' : (transaction.payment_method === 'cash' ? 'Cash' : (transaction.payment_method || '—'))}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-gray-900">

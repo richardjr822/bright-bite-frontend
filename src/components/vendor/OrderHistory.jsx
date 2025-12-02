@@ -9,9 +9,38 @@ import {
   FaCheckCircle,
   FaTimesCircle,
   FaClock,
-  FaSpinner
+  FaSpinner,
+  FaUser
 } from 'react-icons/fa';
 import { API_BASE } from '../../api';
+
+// Format order number to short readable format (e.g., #0001)
+const formatOrderNumber = (orderId) => {
+  if (!orderId) return '#0000';
+  const idStr = String(orderId);
+  const numericPart = idStr.replace(/[^0-9]/g, '');
+  if (numericPart.length >= 3) {
+    return `#${numericPart.slice(-4).padStart(4, '0')}`;
+  }
+  return `#${idStr.slice(-4).toUpperCase()}`;
+};
+
+// Format relative time
+const formatRelativeTime = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
 
 export default function OrderHistory() {
   const [orders, setOrders] = useState([]);
@@ -313,7 +342,7 @@ export default function OrderHistory() {
                 filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-900">#{order.id}</span>
+                      <span className="text-sm font-bold text-[#0d3d23]">{formatOrderNumber(order.id)}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
@@ -366,7 +395,7 @@ export default function OrderHistory() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">Order Details #{selectedOrder.id}</h2>
+              <h2 className="text-xl font-bold text-gray-900">Order Details <span className="text-[#0d3d23]">{formatOrderNumber(selectedOrder.id)}</span></h2>
               <button
                 onClick={() => setShowDetailsModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

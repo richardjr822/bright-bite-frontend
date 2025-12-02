@@ -6,9 +6,38 @@ import {
   FaTimesCircle,
   FaSpinner,
   FaSearch,
-  FaFilter
+  FaFilter,
+  FaUser
 } from 'react-icons/fa';
 import { API_BASE } from '../../api';
+
+// Format order number to short readable format (e.g., #0001)
+const formatOrderNumber = (orderId) => {
+  if (!orderId) return '#0000';
+  const idStr = String(orderId);
+  const numericPart = idStr.replace(/[^0-9]/g, '');
+  if (numericPart.length >= 3) {
+    return `#${numericPart.slice(-4).padStart(4, '0')}`;
+  }
+  return `#${idStr.slice(-4).toUpperCase()}`;
+};
+
+// Format relative time for orders
+const formatRelativeTime = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
@@ -237,7 +266,7 @@ export default function Orders() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">Order #{order.id}</h3>
+                    <span className="text-lg font-bold text-[#0d3d23]">{formatOrderNumber(order.id)}</span>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 ${getStatusColor(order.status)}`}>
                       {getStatusIcon(order.status)}
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -247,18 +276,19 @@ export default function Orders() {
                         {order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}
                       </span>
                     )}
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                      {formatRelativeTime(order.created_at)}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-600">
-                    Customer: <span className="font-medium">{order.users?.full_name || 'Unknown'}</span>
-                  </p>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <FaUser className="text-gray-400 text-xs" />
+                    <span className="font-medium">{order.users?.full_name || 'Unknown'}</span>
+                  </div>
                   {order.assigned_staff && (
                     <p className="text-xs text-gray-500 mt-0.5">
                       Assigned to: <span className="font-medium">{order.assigned_staff.full_name || order.assigned_staff.email || 'Staff'}</span>
                     </p>
                   )}
-                  <p className="text-xs text-gray-500">
-                    {new Date(order.created_at).toLocaleString()}
-                  </p>
                 </div>
                 <div className="text-right">
                     <p className="text-2xl font-bold text-gray-900">₱{order.total_amount?.toFixed(2)}</p>

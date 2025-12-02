@@ -107,6 +107,36 @@ export const useOrderLifecycle = () => {
       setError(e);
       return;
     }
+
+    // If paying by wallet, debit AFTER order creation. If debit fails, cancel the order.
+    try {
+      const payMethod = (payload?.paymentMethod || payload?.payment_method || '').toLowerCase();
+      if (payMethod === 'wallet') {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        };
+        const descr = `Order from ${payload?.restaurantName || 'Vendor'}`;
+        const debitRes = await fetch(`${API_BASE}/wallet/debit`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ amount: payload.total, description: descr, userId: user.id, order_id: created.id })
+        });
+        if (!debitRes.ok) {
+          const errData = await debitRes.json().catch(() => ({}));
+          throw new Error(errData.detail || errData.message || 'Wallet payment failed');
+        }
+        try { window.dispatchEvent(new CustomEvent('wallet:balance-updated')); } catch (_) {}
+      }
+    } catch (err) {
+      try { await api.cancelOrder(created.id); } catch (_) {}
+      setError(err);
+      toast.error(err?.message || 'Wallet payment failed');
+      return;
+    }
+
     // Persist chosen serviceType locally for UI logic (pickup vs delivery)
     if (payload && payload.serviceType) {
       created.serviceType = payload.serviceType;
@@ -377,12 +407,25 @@ export const OrderTracking = ({
 
           {/* Delivery staff info for student */}
           {order?.delivery_staff && (
-            <div className="border rounded-xl p-4 bg-blue-50">
-              <h4 className="text-sm font-semibold text-blue-700 mb-1">Delivery Staff</h4>
-              <p className="text-sm text-blue-800"><span className="font-medium">Name:</span> {order.delivery_staff.full_name || '—'}</p>
-              {order.delivery_staff.phone && (
-                <p className="text-sm text-blue-800"><span className="font-medium">Phone:</span> {order.delivery_staff.phone}</p>
-              )}
+            <div className="border rounded-xl p-4 bg-blue-50 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden bg-blue-100 flex-shrink-0">
+                {order.delivery_staff.profile_photo_url ? (
+                  <img
+                    src={`${API_BASE.replace(/\/api$/, '')}${order.delivery_staff.profile_photo_url}`}
+                    alt="Delivery Staff"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <FaUser className="w-full h-full p-3 text-blue-500" />
+                )}
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-blue-700 mb-0.5">Delivery Staff</h4>
+                <p className="text-sm text-blue-800"><span className="font-medium">Name:</span> {order.delivery_staff.full_name || '—'}</p>
+                {order.delivery_staff.phone && (
+                  <p className="text-sm text-blue-800"><span className="font-medium">Phone:</span> {order.delivery_staff.phone}</p>
+                )}
+              </div>
             </div>
           )}
 

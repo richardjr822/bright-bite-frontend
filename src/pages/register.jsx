@@ -1,100 +1,56 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaUserAlt, FaEnvelope, FaLock, FaGoogle, FaBuilding, FaStore, FaFilePdf, FaTimes } from "react-icons/fa";
-import { useGoogleLogin } from '@react-oauth/google';
+import { FaUserAlt, FaEnvelope, FaLock, FaStore, FaFilePdf, FaTimes } from "react-icons/fa";
 import { toast } from 'react-hot-toast';
 
 import { API_BASE } from '../api';
 
+// Form steps for progress indicator
+const FORM_STEPS = [
+  { id: 1, title: 'Business Info', icon: '🏪' },
+  { id: 2, title: 'Contact Details', icon: '📞' },
+  { id: 3, title: 'Account Setup', icon: '🔐' },
+];
+
 export default function Register() {
-  const [userType, setUserType] = useState("student"); // 'student' or 'vendor'
+  const [userType] = useState("vendor"); // vendor-only application
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    organizationName: "",
-    agree: false,
-    // Vendor specific fields
     businessName: "",
     businessAddress: "",
     contactNumber: "",
     businessDescription: "",
+    agree: false,
   });
   const [businessPermit, setBusinessPermit] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
 
-  // Google Login Handler
-  const handleGoogleRegister = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setGoogleLoading(true);
-      setErrors({});
-      try {
-        // Get user info from Google
-        const userInfoResponse = await fetch(
-          'https://www.googleapis.com/oauth2/v3/userinfo',
-          {
-            headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-          }
-        );
-        
-        if (!userInfoResponse.ok) {
-          throw new Error('Failed to get user info from Google');
-        }
+  // Mount animation
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-        const googleUserInfo = await userInfoResponse.json();
-
-        // Send to your backend
-        const res = await fetch(`${API_BASE}/auth/google`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token: tokenResponse.access_token,
-            email: googleUserInfo.email,
-            name: googleUserInfo.name,
-            picture: googleUserInfo.picture,
-          }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.detail || 'Google registration failed');
-        }
-
-        const data = await res.json();
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Check if profile needs completion
-        const needsProfileCompletion = 
-          !data.user.organization || 
-          data.user.agreed_to_terms === false;
-        
-        if (needsProfileCompletion) {
-          // Redirect to complete profile
-          navigate('/complete-profile');
-        } else {
-          // Profile already complete, go to dashboard
-          navigate('/dashboard');
-        }
-      } catch (error) {
-        console.error('Google registration error:', error);
-        setErrors({ api: error.message || 'Google registration failed. Please try again.' });
-      } finally {
-        setGoogleLoading(false);
-      }
-    },
-    onError: () => {
-      setErrors({ api: 'Google registration failed. Please try again.' });
-      setGoogleLoading(false);
-    },
-  });
+  // Update current step based on form completion
+  useEffect(() => {
+    if (form.email && form.password && form.confirmPassword) {
+      setCurrentStep(3);
+    } else if (form.businessDescription || businessPermit) {
+      setCurrentStep(2);
+    } else {
+      setCurrentStep(1);
+    }
+  }, [form, businessPermit]);
 
   useEffect(() => {
     if (!form.password) {
@@ -173,24 +129,17 @@ export default function Register() {
     else if (!/[A-Z]/.test(form.password)) errs.password = "Include at least one uppercase letter.";
     else if (!/\d/.test(form.password)) errs.password = "Include at least one number.";
     if (form.password !== form.confirmPassword) errs.confirmPassword = "Passwords do not match.";
-    
-    if (userType === "student") {
-      if (!form.organizationName.trim()) {
-        errs.organizationName = "Department is required.";
-      }
-    } else {
-      // Vendor validations
-      if (!form.businessName.trim()) errs.businessName = "Business name is required.";
-      if (!form.businessAddress.trim()) errs.businessAddress = "Location is required.";
-      else if (!["Main Building", "Annex"].includes(form.businessAddress)) errs.businessAddress = "Select Main Building or Annex.";
-      if (!form.contactNumber.trim()) errs.contactNumber = "Contact number is required.";
-      else {
-        const digits = form.contactNumber.replace(/\D/g, "");
-        if (digits.length < 7 || digits.length > 15) errs.contactNumber = "Enter a valid phone number (7-15 digits).";
-      }
-      if (!form.businessDescription.trim()) errs.businessDescription = "Business description is required.";
-      if (!businessPermit) errs.businessPermit = "Business permit is required.";
+    // Vendor validations
+    if (!form.businessName.trim()) errs.businessName = "Business name is required.";
+    if (!form.businessAddress.trim()) errs.businessAddress = "Location is required.";
+    else if (!["Main Building", "Annex"].includes(form.businessAddress)) errs.businessAddress = "Select Main Building or Annex.";
+    if (!form.contactNumber.trim()) errs.contactNumber = "Contact number is required.";
+    else {
+      const digits = form.contactNumber.replace(/\D/g, "");
+      if (digits.length < 7 || digits.length > 15) errs.contactNumber = "Enter a valid phone number (7-15 digits).";
     }
+    if (!form.businessDescription.trim()) errs.businessDescription = "Business description is required.";
+    if (!businessPermit) errs.businessPermit = "Business permit is required.";
     
     if (!form.agree) errs.agree = "You must agree to the terms.";
     return errs;
@@ -212,70 +161,40 @@ export default function Register() {
     if (Object.keys(errs).length === 0) {
       setSubmitting(true);
       try {
-        if (userType === "vendor") {
-          // Validate business permit file presence
-          if (!businessPermit) {
-            setErrors(prev => ({ ...prev, businessPermit: "Business permit file is required." }));
-            setSubmitting(false);
-            return;
-          }
-          const formData = new FormData();
-          formData.append("name", form.name.trim());
-          formData.append("email", form.email.trim());
-          formData.append("password", form.password);
-          formData.append("businessName", form.businessName.trim());
-          formData.append("businessAddress", form.businessAddress.trim());
-          formData.append("contactNumber", form.contactNumber.trim());
-          formData.append("businessDescription", form.businessDescription.trim());
-          formData.append("businessPermit", businessPermit);
-
-          const vendorResponse = await fetch(`${API_BASE}/auth/vendor-application`, {
-            method: "POST",
-            body: formData
-          });
-
-            // Attempt to parse JSON even on error for better messaging
-          const respJson = await vendorResponse.json().catch(() => null);
-          if (!vendorResponse.ok) {
-            throw new Error(respJson?.detail || "Failed to submit vendor application");
-          }
-
-          toast.success('Vendor application submitted! We\'ll email you after review.');
-          navigate("/login", {
-            state: {
-              vendorApplicationPending: true,
-              email: form.email,
-              businessName: form.businessName
-            }
-          });
-        } else {
-          // For students, create account directly without OTP
-          const res = await fetch(`${API_BASE}/auth/register`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: form.name,
-              email: form.email,
-              password: form.password,
-              organization_name: form.organizationName,
-              agree: form.agree
-            }),
-          });
-
-          const data = await res.json().catch(() => null);
-          if (!res.ok) {
-            if (res.status === 409) {
-              setErrors({ email: "This email is already registered. Please login instead." });
-            } else {
-              throw new Error(data?.detail || data?.message || "Failed to register");
-            }
-            return;
-          }
-
-          toast.success('Registration successful! You can now sign in.');
-          // Redirect to login after successful registration
-          navigate('/login', { state: { registeredEmail: form.email } });
+        // Vendor application submission
+        if (!businessPermit) {
+          setErrors(prev => ({ ...prev, businessPermit: "Business permit file is required." }));
+          setSubmitting(false);
+          return;
         }
+        const formData = new FormData();
+        formData.append("name", form.name.trim());
+        formData.append("email", form.email.trim());
+        formData.append("password", form.password);
+        formData.append("businessName", form.businessName.trim());
+        formData.append("businessAddress", form.businessAddress.trim());
+        formData.append("contactNumber", form.contactNumber.trim());
+        formData.append("businessDescription", form.businessDescription.trim());
+        formData.append("businessPermit", businessPermit);
+
+        const vendorResponse = await fetch(`${API_BASE}/auth/vendor-application`, {
+          method: "POST",
+          body: formData
+        });
+
+        // Attempt to parse JSON even on error for better messaging
+        const respJson = await vendorResponse.json().catch(() => null);
+        if (!vendorResponse.ok) {
+          throw new Error(respJson?.detail || "Failed to submit vendor application");
+        }
+
+        toast.success('Application complete. Wait for admin approval.');
+        navigate("/login", {
+          state: {
+            vendorApplicationPending: true,
+            businessName: form.businessName
+          }
+        });
 
       } catch (err) {
         if (err?.message) toast.error(err.message);
@@ -288,6 +207,13 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0d3d23] font-sans text-neutral-900 antialiased py-8">
+      {/* Animated background particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute w-96 h-96 -top-48 -left-48 bg-[#1a5d3a]/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute w-96 h-96 -bottom-48 -right-48 bg-[#1a5d3a]/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute w-64 h-64 top-1/2 left-1/4 bg-[#1a5d3a]/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+
       {/* Background image with dark green tint and blur */}
       <div
         className="absolute inset-0 bg-cover bg-center"
@@ -297,103 +223,78 @@ export default function Register() {
           filter: "blur(8px)",
         }}
       />
-      {/* Dark green tint overlay */}
-      <div className="absolute inset-0 bg-[#0d3d23]/85" />
+      {/* Dark green gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0d3d23]/90 via-[#0d3d23]/85 to-[#1a5d3a]/80" />
 
       {/* Register Card Container */}
-      <div className="relative z-10 w-full max-w-4xl mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden">
-        <div className="bg-[#faf8f3] p-8 md:p-10">
-          {/* Logo */}
-          <div className="flex justify-center mb-6">
-            <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0d3d23] to-[#1a5d3a] shadow ring-1 ring-[#1a5d3a] transition hover:shadow-lg">
-                <svg
-                  className="h-7 w-7 text-white"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  strokeWidth="1.25"
-                  stroke="currentColor"
-                >
-                  <path
-                    d="M3 11c0 4 3 7 9 7s9-3 9-7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M7 10c1-2 3-3 5-3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M15 6c1 1 1 3 0 4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M9 4c.6 0 1.6.7 2 1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+      <div className={`relative z-10 w-full max-w-4xl mx-4 bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <div className="bg-gradient-to-b from-[#faf8f3] to-white p-8 md:p-10">
+          {/* Logo with animation */}
+          <div className={`flex justify-center mb-5 transition-all duration-500 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+            <div className="flex items-center gap-3 group cursor-pointer">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0d3d23] to-[#1a5d3a] shadow-lg ring-1 ring-[#1a5d3a]/50 transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
+                <svg className="h-7 w-7 text-white transition-transform duration-300 group-hover:rotate-12" viewBox="0 0 24 24" fill="none" strokeWidth="1.25" stroke="currentColor">
+                  <path d="M3 11c0 4 3 7 9 7s9-3 9-7" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M7 10c1-2 3-3 5-3" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M15 6c1 1 1 3 0 4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M9 4c.6 0 1.6.7 2 1.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
-              <span className="font-bold text-2xl tracking-tight text-[#0d3d23]">
-                BrightBite
-              </span>
+              <span className="font-bold text-2xl tracking-tight text-[#0d3d23]">BrightBite</span>
             </div>
           </div>
 
-          {/* Welcome Text */}
-          <h1 className="text-3xl font-bold mb-2 text-neutral-900 text-center leading-tight">
-            Create your account
-          </h1>
-          <p className="text-neutral-600 mb-6 text-center leading-relaxed">
-            Get started with BrightBite today
-          </p>
+          {/* Welcome Text with animation */}
+          <div className={`text-center mb-6 transition-all duration-500 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 leading-tight mb-1">Become a Vendor</h1>
+            <p className="text-neutral-500 text-sm">Join BrightBite and start selling to campus students</p>
+          </div>
 
-          {/* User Type Selection */}
-          <div className="flex gap-3 mb-6">
-            <button
-              type="button"
-              onClick={() => setUserType("student")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
-                userType === "student"
-                  ? "bg-[#0d3d23] text-white shadow-md"
-                  : "bg-white text-neutral-700 border border-neutral-300 hover:border-neutral-400"
-              }`}
-            >
-              <FaUserAlt className="h-4 w-4" />
-              Student
-            </button>
-            <button
-              type="button"
-              onClick={() => setUserType("vendor")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
-                userType === "vendor"
-                  ? "bg-[#0d3d23] text-white shadow-md"
-                  : "bg-white text-neutral-700 border border-neutral-300 hover:border-neutral-400"
-              }`}
-            >
-              <FaStore className="h-4 w-4" />
-              Vendor
-            </button>
+          {/* Progress Steps */}
+          <div className={`mb-6 transition-all duration-500 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            <div className="flex items-center justify-between">
+              {FORM_STEPS.map((step, index) => (
+                <div key={step.id} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all duration-300 ${
+                      currentStep >= step.id 
+                        ? 'bg-[#0d3d23] text-white shadow-lg' 
+                        : 'bg-neutral-100 text-neutral-400'
+                    }`}>
+                      {step.icon}
+                    </div>
+                    <span className={`mt-2 text-xs font-medium transition-colors duration-300 ${
+                      currentStep >= step.id ? 'text-[#0d3d23]' : 'text-neutral-400'
+                    }`}>
+                      {step.title}
+                    </span>
+                  </div>
+                  {index < FORM_STEPS.length - 1 && (
+                    <div className={`h-0.5 flex-1 mx-2 transition-colors duration-300 ${
+                      currentStep > step.id ? 'bg-[#0d3d23]' : 'bg-neutral-200'
+                    }`} />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Vendor Info Banner */}
-          {userType === "vendor" && (
-            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="text-sm text-blue-800">
-                <p className="font-semibold mb-1">Vendor Application</p>
-                <p>Your application will be reviewed by our admin team. You'll receive an email once your account is approved.</p>
-              </div>
             </div>
-          )}
+            <div className="text-sm">
+              <p className="font-semibold text-emerald-900">Vendor Application</p>
+              <p className="mt-0.5 text-emerald-700">Complete the form below. Your application will be reviewed by admin before approval.</p>
+            </div>
+          </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {/* Two Column Layout for Name and Organization/Business */}
+            {/* Two Column Layout for Name and Organization */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Full Name */}
               <div>
@@ -427,230 +328,193 @@ export default function Register() {
                 )}
               </div>
 
-              {/* Department (Student) or Business Name (Vendor) */}
-              {userType === "student" ? (
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="organizationName">
-                    Department <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-[#1a5d3a] transition-colors duration-200">
-                      <FaBuilding className="h-4 w-4" />
-                    </div>
-                    <input
-                      id="organizationName"
-                      name="organizationName"
-                      type="text"
-                      className={`w-full pl-10 pr-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                        errors.organizationName
-                          ? 'border-red-300 focus:ring-red-200'
-                          : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
-                      }`}
-                      value={form.organizationName}
-                      onChange={handleChange}
-                      disabled={submitting}
-                      placeholder="Your Department (e.g., Computer Science)"
-                    />
+              {/* Business Name */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="businessName">
+                  Business Name <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-[#1a5d3a] transition-colors duration-200">
+                    <FaStore className="h-4 w-4" />
                   </div>
-                  {errors.organizationName && (
-                    <p className="mt-1.5 text-sm text-red-600" role="alert">
-                      {errors.organizationName}
-                    </p>
-                  )}
-                  <p className="mt-1 text-xs text-neutral-600">We use this to tailor your BrightBite experience within your department.</p>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="businessName">
-                    Business Name <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-[#1a5d3a] transition-colors duration-200">
-                      <FaStore className="h-4 w-4" />
-                    </div>
-                    <input
-                      id="businessName"
-                      name="businessName"
-                      type="text"
-                      className={`w-full pl-10 pr-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                        errors.businessName
-                          ? 'border-red-300 focus:ring-red-200'
-                          : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
-                      }`}
-                      value={form.businessName}
-                      onChange={handleChange}
-                      disabled={submitting}
-                      placeholder="Your canteen or restaurant name"
-                    />
-                  </div>
-                  {errors.businessName && (
-                    <p className="mt-1.5 text-sm text-red-600" role="alert">
-                      {errors.businessName}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Vendor Additional Fields */}
-            {userType === "vendor" && (
-              <>
-                {/* Location (Main Building/Annex) and Contact Number */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="businessAddress">
-                      Location <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="businessAddress"
-                      name="businessAddress"
-                      className={`w-full pr-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                        errors.businessAddress
-                          ? 'border-red-300 focus:ring-red-200'
-                          : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
-                      }`}
-                      value={form.businessAddress}
-                      onChange={handleChange}
-                      disabled={submitting}
-                    >
-                      <option value="">Select location</option>
-                      <option value="Main Building">Main Building</option>
-                      <option value="Annex">Annex</option>
-                    </select>
-                    {errors.businessAddress && (
-                      <p className="mt-1.5 text-sm text-red-600" role="alert">
-                        {errors.businessAddress}
-                      </p>
-                    )}
-                    <p className="mt-1.5 text-xs text-neutral-600">Choose where your canteen is located to improve pickup routing.</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="contactNumber">
-                      Contact Number <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-[#1a5d3a] transition-colors duration-200">
-                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                        </svg>
-                      </div>
-                      <input
-                        id="contactNumber"
-                        name="contactNumber"
-                        type="tel"
-                        className={`w-full pl-10 pr-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                          errors.contactNumber
-                            ? 'border-red-300 focus:ring-red-200'
-                            : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
-                        }`}
-                        value={form.contactNumber}
-                        onChange={handleChange}
-                        disabled={submitting}
-                        placeholder="e.g., +63 912 345 6789"
-                      />
-                    </div>
-                    {errors.contactNumber && (
-                      <p className="mt-1.5 text-sm text-red-600" role="alert">
-                        {errors.contactNumber}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Business Description */}
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="businessDescription">
-                    Business Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    id="businessDescription"
-                    name="businessDescription"
-                    rows="3"
-                    className={`w-full px-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all resize-none ${
-                      errors.businessDescription
+                  <input
+                    id="businessName"
+                    name="businessName"
+                    type="text"
+                    className={`w-full pl-10 pr-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all ${
+                      errors.businessName
                         ? 'border-red-300 focus:ring-red-200'
                         : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
                     }`}
-                    value={form.businessDescription}
+                    value={form.businessName}
                     onChange={handleChange}
                     disabled={submitting}
-                    placeholder="Describe your canteen/restaurant and the types of food you offer..."
+                    placeholder="Your canteen or restaurant name"
                   />
-                  {errors.businessDescription && (
-                    <p className="mt-1.5 text-sm text-red-600" role="alert">
-                      {errors.businessDescription}
-                    </p>
-                  )}
                 </div>
+                {errors.businessName && (
+                  <p className="mt-1.5 text-sm text-red-600" role="alert">
+                    {errors.businessName}
+                  </p>
+                )}
+              </div>
+            </div>
 
-                {/* Business Permit Upload */}
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="businessPermit">
-                    Business Permit <span className="text-red-500">*</span>
-                  </label>
-                  
-                  {!businessPermit ? (
-                    <div className="relative">
-                      <input
-                        id="businessPermit"
-                        name="businessPermit"
-                        type="file"
-                        accept="application/pdf"
-                        onChange={handleFileChange}
-                        disabled={submitting}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="businessPermit"
-                        className={`flex flex-col items-center justify-center w-full px-4 py-8 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
-                          errors.businessPermit
-                            ? 'border-red-300 bg-red-50 hover:bg-red-100'
-                            : 'border-neutral-300 bg-neutral-50 hover:bg-neutral-100 hover:border-neutral-400'
-                        }`}
-                      >
-                        <FaFilePdf className="h-8 w-8 text-neutral-400 mb-2" />
-                        <span className="text-sm font-medium text-neutral-700 mb-1">
-                          Click to upload business permit
-                        </span>
-                        <span className="text-xs text-neutral-500">
-                          PDF only, maximum 10MB
-                        </span>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FaFilePdf className="h-8 w-8 text-red-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-neutral-900 truncate">
-                            {businessPermit.name}
-                          </p>
-                          <p className="text-xs text-neutral-600">
-                            {formatFileSize(businessPermit.size)}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleRemoveFile}
-                        className="ml-3 p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors flex-shrink-0"
-                        aria-label="Remove file"
-                      >
-                        <FaTimes className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
-                  
-                  {errors.businessPermit && (
-                    <p className="mt-1.5 text-sm text-red-600" role="alert">
-                      {errors.businessPermit}
-                    </p>
-                  )}
-                  <p className="mt-1.5 text-xs text-neutral-600">Upload a valid business permit or DTI registration certificate (PDF, max 10MB).</p>
+            {/* Vendor Additional Fields */}
+            {/* Location (Main Building/Annex) and Contact Number */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="businessAddress">
+                  Location <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="businessAddress"
+                  name="businessAddress"
+                  className={`w-full pr-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all ${
+                    errors.businessAddress
+                      ? 'border-red-300 focus:ring-red-200'
+                      : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
+                  }`}
+                  value={form.businessAddress}
+                  onChange={handleChange}
+                  disabled={submitting}
+                >
+                  <option value="">Select location</option>
+                  <option value="Main Building">Main Building</option>
+                  <option value="Annex">Annex</option>
+                </select>
+                {errors.businessAddress && (
+                  <p className="mt-1.5 text-sm text-red-600" role="alert">
+                    {errors.businessAddress}
+                  </p>
+                )}
+                <p className="mt-1.5 text-xs text-neutral-600">Choose where your canteen is located to improve pickup routing.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="contactNumber">
+                  Contact Number <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-[#1a5d3a] transition-colors duration-200">
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                    </svg>
+                  </div>
+                  <input
+                    id="contactNumber"
+                    name="contactNumber"
+                    type="tel"
+                    className={`w-full pl-10 pr-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all ${
+                      errors.contactNumber
+                        ? 'border-red-300 focus:ring-red-200'
+                        : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
+                    }`}
+                    value={form.contactNumber}
+                    onChange={handleChange}
+                    disabled={submitting}
+                    placeholder="e.g., +63 912 345 6789"
+                  />
                 </div>
-              </>
-            )}
+                {errors.contactNumber && (
+                  <p className="mt-1.5 text-sm text-red-600" role="alert">
+                    {errors.contactNumber}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Business Description */}
+            <div>
+              <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="businessDescription">
+                Business Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="businessDescription"
+                name="businessDescription"
+                rows="3"
+                className={`w-full px-4 py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 transition-all resize-none ${
+                  errors.businessDescription
+                    ? 'border-red-300 focus:ring-red-200'
+                    : 'border-neutral-300 focus:ring-[#1a5d3a]/20 hover:border-neutral-400'
+                }`}
+                value={form.businessDescription}
+                onChange={handleChange}
+                disabled={submitting}
+                placeholder="Describe your canteen/restaurant and the types of food you offer..."
+              />
+              {errors.businessDescription && (
+                <p className="mt-1.5 text-sm text-red-600" role="alert">
+                  {errors.businessDescription}
+                </p>
+              )}
+            </div>
+
+            {/* Business Permit Upload */}
+            <div>
+              <label className="block text-sm font-semibold text-neutral-800 mb-1.5" htmlFor="businessPermit">
+                Business Permit <span className="text-red-500">*</span>
+              </label>
+              
+              {!businessPermit ? (
+                <div className="relative">
+                  <input
+                    id="businessPermit"
+                    name="businessPermit"
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleFileChange}
+                    disabled={submitting}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="businessPermit"
+                    className={`flex flex-col items-center justify-center w-full px-4 py-8 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                      errors.businessPermit
+                        ? 'border-red-300 bg-red-50 hover:bg-red-100'
+                        : 'border-neutral-300 bg-neutral-50 hover:bg-neutral-100 hover:border-neutral-400'
+                    }`}
+                  >
+                    <FaFilePdf className="h-8 w-8 text-neutral-400 mb-2" />
+                    <span className="text-sm font-medium text-neutral-700 mb-1">
+                      Click to upload business permit
+                    </span>
+                    <span className="text-xs text-neutral-500">
+                      PDF only, maximum 10MB
+                    </span>
+                  </label>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FaFilePdf className="h-8 w-8 text-red-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-neutral-900 truncate">
+                        {businessPermit.name}
+                      </p>
+                      <p className="text-xs text-neutral-600">
+                        {formatFileSize(businessPermit.size)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="ml-3 p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors flex-shrink-0"
+                    aria-label="Remove file"
+                  >
+                    <FaTimes className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              
+              {errors.businessPermit && (
+                <p className="mt-1.5 text-sm text-red-600" role="alert">
+                  {errors.businessPermit}
+                </p>
+              )}
+              <p className="mt-1.5 text-xs text-neutral-600">Upload a valid business permit or DTI registration certificate (PDF, max 10MB).</p>
+            </div>
 
             {/* Email Address */}
             <div>
@@ -847,75 +711,62 @@ export default function Register() {
             {errors.api && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
                 <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
                 <span className="text-sm text-red-800">{errors.api}</span>
               </div>
             )}
 
-            {/* Submit Button */}
+            {/* Submit Button with enhanced animation */}
             <button
               type="submit"
-              disabled={submitting || googleLoading}
-              className="w-full mt-2 rounded-lg bg-[#0d3d23] px-4 py-3 text-white font-semibold shadow hover:bg-[#1a5d3a] disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#1a5d3a]/20 focus:ring-offset-1"
+              disabled={submitting}
+              className="relative w-full mt-4 rounded-xl px-4 py-3.5 text-white font-semibold shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#1a5d3a]/30 focus:ring-offset-2 overflow-hidden group bg-gradient-to-r from-[#0d3d23] to-[#1a5d3a] hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
+              {/* Button shine effect */}
+              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              
               {submitting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
                     <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  {userType === "vendor" ? "Submitting application..." : "Creating account..."}
+                  Submitting application...
                 </span>
               ) : (
-                userType === "vendor" ? "Submit Vendor Application" : "Create Account"
+                <span className="flex items-center justify-center gap-2">
+                  Submit Vendor Application
+                  <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </span>
               )}
             </button>
 
-            {/* Google Registration Button - Only for students, AFTER submit button */}
-            {userType === "student" && (
-              <>
-                {/* Divider */}
-                <div className="my-6 flex items-center">
-                  <div className="flex-1 border-t border-neutral-200"></div>
-                  <span className="px-4 text-xs font-medium text-neutral-500 tracking-wide">OR</span>
-                  <div className="flex-1 border-t border-neutral-200"></div>
-                </div>
-
-                <button
-                  onClick={handleGoogleRegister}
-                  type="button"
-                  disabled={googleLoading || submitting}
-                  className="w-full flex items-center justify-center gap-3 rounded-lg border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 shadow-sm hover:bg-neutral-50 hover:shadow transition-all focus:outline-none focus:ring-2 focus:ring-neutral-400/20 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {googleLoading ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5 text-[#4285F4]" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-                        <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <FaGoogle className="text-lg text-[#4285F4]" />
-                      Continue with Google
-                    </>
-                  )}
-                </button>
-              </>
-            )}
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-neutral-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-3 text-neutral-400 font-medium">Already registered?</span>
+              </div>
+            </div>
 
             {/* Sign In Link */}
-            <div className="mt-6 text-sm text-neutral-700 text-center">
-              Already have an account?{' '}
-              <Link
-                to="/login"
-                className="text-[#1a5d3a] font-semibold hover:text-[#0d3d23] transition-colors hover:underline"
-              >
-                Sign in
-              </Link>
-            </div>
+            <Link
+              to="/login"
+              className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl border-2 border-[#0d3d23]/20 text-[#0d3d23] font-semibold text-sm hover:bg-[#0d3d23]/5 hover:border-[#0d3d23]/40 transition-all duration-200 group"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+              </svg>
+              Sign in to existing account
+              <svg className="w-3 h-3 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           </form>
         </div>
       </div>

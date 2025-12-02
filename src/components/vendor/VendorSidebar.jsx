@@ -247,14 +247,6 @@ export default function VendorSidebar({
           <p className="text-[10px] font-bold text-gray-500 mb-2 px-2 tracking-wider uppercase">Account</p>
 
           <MenuItem
-            icon={FaBell}
-            label="Notifications"
-            isActive={activeTab === 'notifications'}
-            color="red"
-            onClick={() => onSelectTab('notifications')}
-          />
-
-          <MenuItem
             icon={FaCog}
             label="Settings"
             isActive={activeTab === 'settings'}

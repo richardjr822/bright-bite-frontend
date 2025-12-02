@@ -505,6 +505,7 @@ const DeliverStaff = () => {
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
+                  <th className="text-left px-6 py-3">Photo</th>
                   <th className="text-left px-6 py-3">Name</th>
                   <th className="text-left px-6 py-3">Email</th>
                   <th className="text-left px-6 py-3">Staff ID</th>
@@ -513,6 +514,19 @@ const DeliverStaff = () => {
               <tbody className="divide-y divide-gray-100">
                 {staffList.map((s) => (
                   <tr key={s.id || s.staff_id} className="hover:bg-gray-50">
+                    <td className="px-6 py-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+                        {s.profile_photo_url ? (
+                          <img
+                            src={`${API_BASE.replace(/\/api$/, '')}${s.profile_photo_url}`}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">N/A</div>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-3 text-gray-900">{s.full_name || 'Delivery Staff'}</td>
                     <td className="px-6 py-3 text-gray-700">{s.email}</td>
                     <td className="px-6 py-3 font-mono">{s.staff_id}</td>

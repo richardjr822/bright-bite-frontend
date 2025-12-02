@@ -272,63 +272,71 @@ export default function RewardsDeals() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <FaGift className="text-purple-600" />
-            Rewards & Deals
-          </h1>
-          <p className="text-gray-600 mt-2">Earn points and redeem exciting rewards</p>
-        </div>
-
-        {/* Points Card */}
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-8 mb-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm mb-2">Your Reward Points</p>
-              <h2 className="text-5xl font-bold mb-2">{points}</h2>
-              <p className="text-purple-100 text-sm">Keep ordering to earn more points!</p>
+    <div className="min-h-screen bg-slate-50/80">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200/60">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#0d3d23] to-[#1a5d3a] rounded-xl flex items-center justify-center shadow-sm">
+              <FaGift className="text-lg text-white" />
             </div>
-            <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-              <FaTrophy className="text-6xl" />
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Rewards & Deals</h1>
+              <p className="text-slate-500 text-sm">Earn points and redeem exciting rewards</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {/* Points Card */}
+        <div className="bg-gradient-to-br from-[#0d3d23] to-[#1a5d3a] rounded-xl shadow-lg p-6 mb-5 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-24 translate-x-24"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <p className="text-green-100/80 text-xs font-medium mb-1">Your Reward Points</p>
+              <h2 className="text-4xl font-bold mb-1">{points}</h2>
+              <p className="text-green-100/80 text-xs">Keep ordering to earn more points!</p>
+            </div>
+            <div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center">
+              <FaTrophy className="text-3xl text-white" />
             </div>
           </div>
           {error && (
-            <div className="mt-3 text-sm bg-white/20 rounded px-3 py-2">{error}</div>
+            <div className="mt-3 text-xs bg-white/10 rounded-lg px-3 py-2">{error}</div>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-          <div className="flex border-b border-gray-200">
+        <div className="bg-white rounded-xl border border-slate-200 mb-5">
+          <div className="flex border-b border-slate-200">
             <button
               onClick={() => setActiveTab('rewards')}
-              className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 font-medium text-sm transition-colors ${
                 activeTab === 'rewards'
-                  ? 'text-purple-600 border-b-2 border-purple-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-[#0d3d23] border-b-2 border-[#0d3d23]'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Rewards Catalog
             </button>
             <button
               onClick={() => setActiveTab('vouchers')}
-              className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 font-medium text-sm transition-colors ${
                 activeTab === 'vouchers'
-                  ? 'text-purple-600 border-b-2 border-purple-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-[#0d3d23] border-b-2 border-[#0d3d23]'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               My Vouchers
             </button>
             <button
               onClick={() => setActiveTab('deals')}
-              className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 font-medium text-sm transition-colors ${
                 activeTab === 'deals'
-                  ? 'text-purple-600 border-b-2 border-purple-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-[#0d3d23] border-b-2 border-[#0d3d23]'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Hot Deals
@@ -336,60 +344,60 @@ export default function RewardsDeals() {
           </div>
           
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-5">
             {getTabContent()}
           </div>
         </div>
+      </div>
 
-        {/* Redeem Modal */}
-        {selectedReward && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-              <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4 rounded-t-xl">
-                <h2 className="text-xl font-bold text-white">Redeem Reward</h2>
+      {/* Redeem Modal */}
+      {selectedReward && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="bg-gradient-to-r from-[#0d3d23] to-[#1a5d3a] px-5 py-4 rounded-t-xl">
+              <h2 className="text-lg font-semibold text-white">Redeem Reward</h2>
+            </div>
+
+            <div className="p-5">
+              <div className="text-center mb-5">
+                <div className="w-16 h-16 bg-green-50 border border-green-200 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <FaGift className="text-3xl text-[#0d3d23]" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">{selectedReward.title}</h3>
+                <p className="text-sm text-slate-500 mb-3">{selectedReward.description}</p>
+                <div className="flex items-center justify-center gap-2 text-[#0d3d23] mb-1">
+                  <FaStar className="text-amber-500 text-sm" />
+                  <span className="font-bold text-xl">{selectedReward.points}</span>
+                  <span className="text-sm">points</span>
+                </div>
+                <p className="text-xs text-slate-500">Your balance: {points} points</p>
               </div>
 
-              <div className="p-6">
-                <div className="text-center mb-6">
-                  <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FaGift className="text-5xl text-purple-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedReward.title}</h3>
-                  <p className="text-gray-600 mb-4">{selectedReward.description}</p>
-                  <div className="flex items-center justify-center gap-2 text-purple-600 mb-2">
-                    <FaStar className="text-yellow-500" />
-                    <span className="font-bold text-2xl">{selectedReward.points}</span>
-                    <span>points</span>
-                  </div>
-                  <p className="text-sm text-gray-500">Your balance: {points} points</p>
-                </div>
+              <div className="bg-slate-50 rounded-lg p-3 mb-5 border border-slate-200">
+                <p className="text-xs text-slate-600">
+                  <strong>Validity:</strong> {selectedReward.expiry} from redemption date
+                </p>
+              </div>
 
-                <div className="bg-purple-50 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-purple-800">
-                    <strong>Validity:</strong> {selectedReward.expiry} from redemption date
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setSelectedReward(null)}
-                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => handleRedeem(selectedReward)}
-                    disabled={points < selectedReward.points}
-                    className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Redeem Now
-                  </button>
-                </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedReward(null)}
+                  className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleRedeem(selectedReward)}
+                  disabled={points < selectedReward.points}
+                  className="flex-1 px-4 py-2.5 bg-[#0d3d23] text-white rounded-lg hover:bg-[#1a5d3a] transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Redeem Now
+                </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FaStore,
   FaUser,
@@ -12,12 +12,19 @@ import {
   FaEnvelope,
   FaPalette,
   FaMoon,
-  FaSun
+  FaSun,
+  FaEye,
+  FaEyeSlash
 } from 'react-icons/fa';
+
+import { API_BASE } from '../../api';
 
 export default function Settings() {
   const [activeSection, setActiveSection] = useState('business');
   const [saving, setSaving] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const fileInputRef = useRef(null);
+  const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
   
   // Load business info from localStorage or use defaults
   const [businessInfo, setBusinessInfo] = useState(() => {
@@ -27,7 +34,8 @@ export default function Settings() {
       description: 'Serving delicious meals made with the finest ingredients since 2010',
       address: '123 Foodie Street, Cuisine City',
       phone: '(555) 123-4567',
-      email: 'contact@gourmetdelights.com'
+      email: 'contact@gourmetdelights.com',
+      logoUrl: null
     };
   });
 
@@ -195,6 +203,49 @@ export default function Settings() {
     }
   }, [preferences.darkMode]);
 
+  const handleLogoClick = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  const handleLogoSelected = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Logo must be less than 2MB');
+      return;
+    }
+    try {
+      setLogoUploading(true);
+      const fd = new FormData();
+      fd.append('logo', file);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/vendor/profile/logo`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: fd,
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.detail || err?.message || 'Upload failed');
+      }
+      const data = await res.json();
+      const url = data.logo_url || null;
+      const next = { ...businessInfo, logoUrl: url };
+      setBusinessInfo(next);
+      localStorage.setItem('vendorBusinessInfo', JSON.stringify(next));
+      window.dispatchEvent(new CustomEvent('businessInfoUpdated', { detail: next }));
+    } catch (err) {
+      console.error('Logo upload failed:', err);
+      alert(err?.message || 'Failed to upload logo');
+    } finally {
+      setLogoUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleSave = async (section) => {
     setSaving(true);
     
@@ -231,22 +282,45 @@ export default function Settings() {
           break;
         case 'Password':
           // Validate passwords
-          if (security.newPassword !== security.confirmPassword) {
+          const curr = security.currentPassword || '';
+          const next = security.newPassword || '';
+          const conf = security.confirmPassword || '';
+          const strong = next.length >= 8 && /[A-Z]/.test(next) && /\d/.test(next);
+          if (next !== conf) {
             alert('New passwords do not match!');
             setSaving(false);
             return;
           }
-          if (security.newPassword.length < 8) {
-            alert('Password must be at least 8 characters long!');
+          if (curr === next) {
+            alert('New password must be different from current password!');
             setSaving(false);
             return;
           }
-          // In real app, this would call API to change password
-          setSecurity({
-            currentPassword: '',
-            newPassword: '',
-            confirmPassword: ''
-          });
+          if (!strong) {
+            alert('Password must be at least 8 characters and include an uppercase letter and a number.');
+            setSaving(false);
+            return;
+          }
+          try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE}/auth/change-password`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+              },
+              body: JSON.stringify({ current_password: curr, new_password: next })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(data.detail || data.message || 'Failed to update password');
+            }
+            setSecurity({ currentPassword: '', newPassword: '', confirmPassword: '' });
+          } catch (e) {
+            alert(e?.message || 'Failed to update password');
+            setSaving(false);
+            return;
+          }
           break;
       }
       
@@ -269,13 +343,22 @@ export default function Settings() {
 
       {/* Logo Upload */}
       <div className="flex items-center gap-6">
-        <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center text-white text-3xl font-bold">
-          {businessInfo.name.charAt(0)}
+        <div className="w-24 h-24 rounded-xl overflow-hidden bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-3xl font-bold">
+          {businessInfo.logoUrl ? (
+            <img
+              src={`${API_BASE.replace(/\/api$/, '')}${businessInfo.logoUrl}`}
+              alt="Logo"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            businessInfo.name.charAt(0)
+          )}
         </div>
         <div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
-            <FaCamera /> Upload Logo
+          <button onClick={handleLogoClick} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium" disabled={logoUploading}>
+            <FaCamera /> {logoUploading ? 'Uploading...' : 'Upload Logo'}
           </button>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoSelected} className="hidden" />
           <p className="text-xs text-gray-500 mt-2">Recommended: 400x400px, max 2MB</p>
         </div>
       </div>
@@ -562,39 +645,54 @@ export default function Settings() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Current Password
           </label>
-          <input
-            type="password"
-            value={security.currentPassword}
-            onChange={(e) => setSecurity({ ...security, currentPassword: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            placeholder="Enter current password"
-          />
+          <div className="relative">
+            <input
+              type={showPw.current ? 'text' : 'password'}
+              value={security.currentPassword}
+              onChange={(e) => setSecurity({ ...security, currentPassword: e.target.value })}
+              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Enter current password"
+            />
+            <button type="button" onClick={() => setShowPw((s) => ({ ...s, current: !s.current }))} className="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700">
+              {showPw.current ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             New Password
           </label>
-          <input
-            type="password"
-            value={security.newPassword}
-            onChange={(e) => setSecurity({ ...security, newPassword: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            placeholder="Enter new password"
-          />
+          <div className="relative">
+            <input
+              type={showPw.next ? 'text' : 'password'}
+              value={security.newPassword}
+              onChange={(e) => setSecurity({ ...security, newPassword: e.target.value })}
+              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Enter new password"
+            />
+            <button type="button" onClick={() => setShowPw((s) => ({ ...s, next: !s.next }))} className="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700">
+              {showPw.next ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Confirm New Password
           </label>
-          <input
-            type="password"
-            value={security.confirmPassword}
-            onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            placeholder="Confirm new password"
-          />
+          <div className="relative">
+            <input
+              type={showPw.confirm ? 'text' : 'password'}
+              value={security.confirmPassword}
+              onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
+              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Confirm new password"
+            />
+            <button type="button" onClick={() => setShowPw((s) => ({ ...s, confirm: !s.confirm }))} className="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700">
+              {showPw.confirm ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -619,7 +717,6 @@ export default function Settings() {
             {[
               { id: 'business', icon: FaStore, label: 'Business Info' },
               { id: 'hours', icon: FaClock, label: 'Operating Hours' },
-              { id: 'notifications', icon: FaBell, label: 'Notifications' },
               { id: 'preferences', icon: FaPalette, label: 'Preferences' },
               { id: 'security', icon: FaLock, label: 'Security' }
             ].map(({ id, icon: Icon, label }) => (

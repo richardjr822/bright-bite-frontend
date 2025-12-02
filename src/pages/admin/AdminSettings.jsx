@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaCog, FaLock } from 'react-icons/fa';
+import { FaCog, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { API_BASE } from '../../api';
 
 export default function AdminSettings() {
@@ -9,6 +9,7 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -20,6 +21,15 @@ export default function AdminSettings() {
     }
     if (newPassword !== confirmPassword) {
       setError('New passwords do not match');
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setError('New password must be different from current password');
+      return;
+    }
+    const strong = newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /\d/.test(newPassword);
+    if (!strong) {
+      setError('New password must be at least 8 characters and include an uppercase letter and a number');
       return;
     }
     try {
@@ -75,30 +85,45 @@ export default function AdminSettings() {
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            />
+            <div className="relative">
+              <input
+                type={showPw.current ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+              <button type="button" onClick={() => setShowPw(s => ({ ...s, current: !s.current }))} className="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700">
+                {showPw.current ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            />
+            <div className="relative">
+              <input
+                type={showPw.next ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+              <button type="button" onClick={() => setShowPw(s => ({ ...s, next: !s.next }))} className="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700">
+                {showPw.next ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            />
+            <div className="relative">
+              <input
+                type={showPw.confirm ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+              <button type="button" onClick={() => setShowPw(s => ({ ...s, confirm: !s.confirm }))} className="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700">
+                {showPw.confirm ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
           <div className="flex justify-end">
             <button

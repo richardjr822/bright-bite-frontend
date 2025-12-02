@@ -2,13 +2,11 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import Login from './pages/login'
-import ForgotPassword from './components/forgotPassword'
 import Landing from './pages/landing'
 import Register from './pages/register'
   import Beneficiaries from './components/Beneficiaries'
 import Programs from './components/programs'
 import Settings from './components/Settings'
-import PostGoogleLogin from './components/postGoogleLogin'
 import MealPreferences from './components/student/MealPreferences'
 import MealPlannerPage from './pages/student/mealPlanner'
 import CampusCanteen from './pages/student/CampusCanteen'
@@ -18,6 +16,7 @@ import MyOrders from './pages/student/MyOrders'
 import MyWallet from './pages/student/MyWallet'
 import RewardsDeals from './pages/student/RewardsDeals'
 import StudentSettings from './pages/student/StudentSettings'
+import StudentHomeDashboard from './pages/student/StudentHomeDashboard'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminOverview from './pages/admin/AdminOverview'
 import AdminPendingVendors from './pages/admin/AdminPendingVendors'
@@ -69,15 +68,15 @@ function App() {
         {/* Public */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+        
         <Route path="/register" element={<Register />} />
-        {/** Email verification temporarily disabled for presentation */}
-        <Route path="/complete-profile" element={<PostGoogleLogin />} />
+        
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
 
         {/* Student routes with sidebar */}
         <Route element={<StudentLayout />}>
+          <Route path="/dashboard" element={<StudentHomeDashboard />} />
           <Route path="/beneficiaries" element={<Beneficiaries />} />
           <Route path="/programs" element={<Programs />} />
           <Route path="/meal-preferences" element={<MealPreferences redirectTo="/meal-planner" />} />
@@ -118,7 +117,6 @@ function App() {
             <Route path="earnings" element={<Earnings />} />
             <Route path="reviews" element={<Reviews />} />
             <Route path="delivery-staff" element={<DeliverStaff />} />
-            <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<VendorSettings />} />
             <Route path="*" element={<Navigate to="overview" replace />} />
           </Route>
