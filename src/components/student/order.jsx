@@ -6,7 +6,8 @@ import {
   FaCheckCircle,
   FaMapMarkerAlt,
   FaExclamationTriangle,
-  FaUser
+  FaUser,
+  FaPhone
 } from 'react-icons/fa';
 import { API_BASE } from '../../api';
 
@@ -94,6 +95,7 @@ export const useOrderLifecycle = () => {
   const [status, setStatus] = useState(null);
   const [etaMinutes, setEtaMinutes] = useState(null);
   const [error, setError] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const pollRef = useRef(null);
   const wsRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -143,6 +145,7 @@ export const useOrderLifecycle = () => {
     }
     setOrder(created);
     setStatus(created.status || ORDER_STATUS.PENDING_CONFIRMATION);
+    setIsModalOpen(true);
 
     // WebSocket primary channel; reconnection with backoff
     const connect = () => {
@@ -244,17 +247,28 @@ export const useOrderLifecycle = () => {
     setStatus(null);
     setEtaMinutes(null);
     setError(null);
+    setIsModalOpen(false);
   }, []);
+
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
+
+  const openModal = useCallback(() => {
+    if (order) setIsModalOpen(true);
+  }, [order]);
 
   return {
     order,
     status,
     etaMinutes,
-    // rider removed
     error,
+    isModalOpen,
     startOrder,
     setManualStatus,
-    dismissOrder
+    dismissOrder,
+    closeModal,
+    openModal
   };
 };
 
@@ -369,32 +383,21 @@ export const OrderTracking = ({
             </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Status */}
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
               {status === ORDER_STATUS.REJECTED ? (
                 <FaExclamationTriangle className="text-red-500 text-xl" />
               ) : [ORDER_STATUS.ON_THE_WAY, ORDER_STATUS.ARRIVING_SOON].includes(status) ? (
-                <FaUser className="text-green-600 text-xl" />
+                <FaMapMarkerAlt className="text-green-600 text-xl" />
               ) : status === ORDER_STATUS.DELIVERED || status === ORDER_STATUS.COMPLETED ? (
                 <FaCheckCircle className="text-green-600 text-xl" />
               ) : (
                 <FaClock className="text-green-600 text-xl animate-pulse" />
               )}
             </div>
-                      {/* User Delivery Details */}
-                      <div className="border rounded-xl p-4 bg-gray-50">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                          <FaUser /> {order?.serviceType === 'delivery' ? 'Delivery To' : order?.serviceType === 'pickup' ? 'Pickup By' : 'Customer'}
-                        </h4>
-                        <p className="text-sm text-gray-700"><span className="font-medium">Name:</span> {userInfo.full_name || '—'}</p>
-                        <p className="text-sm text-gray-700"><span className="font-medium">Phone:</span> {userInfo.phone || '—'}</p>
-                        {(!userInfo.phone) && (
-                          <p className="text-xs text-gray-500 mt-2">No phone number on file. Add one in Settings for easier coordination.</p>
-                        )}
-                      </div>
-            <div>
+            <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900">{cfg.label}</h3>
               <p className="text-sm text-gray-600">{cfg.desc}</p>
               {etaMinutes && status === ORDER_STATUS.PREPARING && (
@@ -405,29 +408,52 @@ export const OrderTracking = ({
             </div>
           </div>
 
-          {/* Delivery staff info for student */}
+          {/* Delivery staff info - show when order is on the way or has staff assigned */}
           {order?.delivery_staff && (
-            <div className="border rounded-xl p-4 bg-blue-50 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full overflow-hidden bg-blue-100 flex-shrink-0">
-                {order.delivery_staff.profile_photo_url ? (
-                  <img
-                    src={`${API_BASE.replace(/\/api$/, '')}${order.delivery_staff.profile_photo_url}`}
-                    alt="Delivery Staff"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <FaUser className="w-full h-full p-3 text-blue-500" />
-                )}
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold text-blue-700 mb-0.5">Delivery Staff</h4>
-                <p className="text-sm text-blue-800"><span className="font-medium">Name:</span> {order.delivery_staff.full_name || '—'}</p>
-                {order.delivery_staff.phone && (
-                  <p className="text-sm text-blue-800"><span className="font-medium">Phone:</span> {order.delivery_staff.phone}</p>
-                )}
+            <div className="border rounded-xl p-4 bg-blue-50 border-blue-200">
+              <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                <FaUser className="text-blue-600" />
+                Your Delivery Staff
+              </h4>
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full overflow-hidden bg-blue-100 flex-shrink-0 border-2 border-blue-200">
+                  {order.delivery_staff.profile_photo_url ? (
+                    <img
+                      src={`${API_BASE.replace(/\/api$/, '')}${order.delivery_staff.profile_photo_url}`}
+                      alt="Delivery Staff"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-blue-200 text-blue-600 font-bold text-lg">
+                      {order.delivery_staff.full_name?.charAt(0) || 'D'}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900">{order.delivery_staff.full_name || 'Delivery Staff'}</p>
+                  {order.delivery_staff.phone && (
+                    <a href={`tel:${order.delivery_staff.phone}`} className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-1">
+                      <FaPhone className="text-xs" />
+                      {order.delivery_staff.phone}
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           )}
+
+          {/* Customer Delivery Details */}
+          <div className="border rounded-xl p-4 bg-gray-50">
+            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <FaUser className="text-gray-500" /> 
+              {order?.serviceType === 'delivery' ? 'Delivery To' : order?.serviceType === 'pickup' ? 'Pickup By' : 'Customer'}
+            </h4>
+            <p className="text-sm text-gray-700"><span className="font-medium">Name:</span> {userInfo.full_name || '—'}</p>
+            <p className="text-sm text-gray-700"><span className="font-medium">Phone:</span> {userInfo.phone || '—'}</p>
+            {(!userInfo.phone) && (
+              <p className="text-xs text-gray-500 mt-2">No phone number on file. Add one in Settings for easier coordination.</p>
+            )}
+          </div>
 
           {/* Arrival/Claim notice */}
           {status === ORDER_STATUS.ARRIVING_SOON && (

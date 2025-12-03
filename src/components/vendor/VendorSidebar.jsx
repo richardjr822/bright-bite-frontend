@@ -13,55 +13,26 @@ import {
   FaWallet,
   FaDollarSign,
   FaUserPlus,
+  FaUsers,
 } from 'react-icons/fa';
 
 const MenuItem = ({ icon: Icon, label, isActive, color = 'green', onClick, badge }) => {
+  // Monochromatic green color scheme
+  const monoGreen = {
+    active: 'bg-[#0d3d23]',
+    inactive: 'text-gray-700 hover:bg-[#0d3d23]/5',
+    icon: 'text-[#1a5d3a]',
+  };
   const colorClasses = {
-    green: {
-      active: 'from-[#0d3d23] to-[#1a5d3a] border-green-300',
-      inactive: 'text-gray-700 hover:bg-green-50',
-      icon: 'text-green-600',
-    },
-    blue: {
-      active: 'from-blue-600 to-blue-700 border-blue-300',
-      inactive: 'text-gray-700 hover:bg-blue-50',
-      icon: 'text-blue-600',
-    },
-    purple: {
-      active: 'from-purple-600 to-purple-700 border-purple-300',
-      inactive: 'text-gray-700 hover:bg-purple-50',
-      icon: 'text-purple-600',
-    },
-    orange: {
-      active: 'from-orange-600 to-orange-700 border-orange-300',
-      inactive: 'text-gray-700 hover:bg-orange-50',
-      icon: 'text-orange-600',
-    },
-    yellow: {
-      active: 'from-yellow-500 to-yellow-600 border-yellow-300',
-      inactive: 'text-gray-700 hover:bg-yellow-50',
-      icon: 'text-yellow-600',
-    },
-    emerald: {
-      active: 'from-emerald-600 to-emerald-700 border-emerald-300',
-      inactive: 'text-gray-700 hover:bg-emerald-50',
-      icon: 'text-emerald-600',
-    },
-    red: {
-      active: 'from-red-600 to-red-700 border-red-300',
-      inactive: 'text-gray-700 hover:bg-red-50',
-      icon: 'text-red-600',
-    },
-    gray: {
-      active: 'from-gray-600 to-gray-700 border-gray-300',
-      inactive: 'text-gray-700 hover:bg-gray-50',
-      icon: 'text-gray-600',
-    },
-    teal: {
-      active: 'from-teal-600 to-teal-700 border-teal-300',
-      inactive: 'text-gray-700 hover:bg-teal-50',
-      icon: 'text-teal-600',
-    },
+    green: monoGreen,
+    blue: monoGreen,
+    purple: monoGreen,
+    orange: monoGreen,
+    yellow: monoGreen,
+    emerald: monoGreen,
+    red: monoGreen,
+    gray: monoGreen,
+    teal: monoGreen,
   };
 
   const colors = colorClasses[color] || colorClasses.green;
@@ -71,7 +42,7 @@ const MenuItem = ({ icon: Icon, label, isActive, color = 'green', onClick, badge
       onClick={onClick}
       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl mb-1.5 transition-all duration-200 group ${
         isActive
-          ? `bg-gradient-to-r ${colors.active} text-white shadow-md border`
+          ? `${colors.active} text-white shadow-sm`
           : `${colors.inactive} border border-transparent`
       }`}
     >
@@ -220,6 +191,14 @@ export default function VendorSidebar({
             isActive={activeTab === 'earnings'}
             color="emerald"
             onClick={() => onSelectTab('earnings')}
+          />
+
+          <MenuItem
+            icon={FaUsers}
+            label="Student Insights"
+            isActive={activeTab === 'student-insights'}
+            color="blue"
+            onClick={() => onSelectTab('student-insights')}
           />
         </div>
 

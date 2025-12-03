@@ -20,9 +20,13 @@ import {
   FaHistory,
   FaChartLine,
   FaUser,
-  FaDownload
+  FaDownload,
+  FaPhone,
+  FaMapMarkerAlt,
+  FaMotorcycle
 } from 'react-icons/fa';
 import { apiClient, API_BASE } from '../../api';
+import { formatOrderId } from '../../utils/orderUtils';
 
 export default function MyOrders() {
   const [orders, setOrders] = useState([]);
@@ -229,6 +233,95 @@ export default function MyOrders() {
       </div>
       
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {/* Active Order Tracking Section */}
+        {orders.filter(o => ['pending', 'preparing'].includes(o.status)).length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <FaMotorcycle className="text-teal-600" />
+              Active Orders
+            </h2>
+            <div className="space-y-3">
+              {orders.filter(o => ['pending', 'preparing'].includes(o.status)).map((order) => {
+                const statusConfig = getStatusConfig(order.status);
+                return (
+                  <div 
+                    key={order.id}
+                    onClick={() => setSelectedOrder(order)}
+                    className="bg-white border border-teal-200 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center text-white font-semibold">
+                          {order.vendor.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">{order.vendor}</p>
+                          <p className="text-xs text-slate-500">{formatOrderNumber(order.id, 0)}</p>
+                        </div>
+                      </div>
+                      <span className={`px-3 py-1 ${statusConfig.bg} ${statusConfig.text} rounded-full text-xs font-semibold`}>
+                        {statusConfig.label}
+                      </span>
+                    </div>
+                    
+                    {/* Order Tracking Progress */}
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-2">
+                        {[
+                          { step: 'pending', label: 'Confirmed', icon: FaCheckCircle },
+                          { step: 'preparing', label: 'Preparing', icon: FaUtensils },
+                          { step: 'on_the_way', label: 'On the Way', icon: FaTruck },
+                          { step: 'delivered', label: 'Delivered', icon: FaMapMarkerAlt }
+                        ].map((step, idx) => {
+                          const isActive = 
+                            (step.step === 'pending' && ['pending', 'preparing', 'delivered'].includes(order.status)) ||
+                            (step.step === 'preparing' && ['preparing', 'delivered'].includes(order.status)) ||
+                            (step.step === 'on_the_way' && order.status === 'preparing') ||
+                            (step.step === 'delivered' && order.status === 'delivered');
+                          const StepIcon = step.icon;
+                          return (
+                            <div key={step.step} className="flex flex-col items-center flex-1">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                isActive ? 'bg-teal-500 text-white' : 'bg-slate-200 text-slate-400'
+                              }`}>
+                                <StepIcon className="text-sm" />
+                              </div>
+                              <span className={`text-[10px] mt-1 ${isActive ? 'text-teal-600 font-medium' : 'text-slate-400'}`}>
+                                {step.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Progress Line */}
+                      <div className="absolute top-4 left-8 right-8 h-0.5 bg-slate-200 -z-10">
+                        <div 
+                          className="h-full bg-teal-500 transition-all duration-500"
+                          style={{ 
+                            width: order.status === 'pending' ? '0%' : 
+                                   order.status === 'preparing' ? '66%' : 
+                                   order.status === 'delivered' ? '100%' : '33%' 
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                      <span className="text-sm text-slate-600">
+                        {order.items.length} item{order.items.length !== 1 ? 's' : ''} • ₱{order.total.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-teal-600 font-medium flex items-center gap-1">
+                        <FaEye className="text-[10px]" />
+                        Tap to view details
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Status Filter Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {[
@@ -470,8 +563,8 @@ export default function MyOrders() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-xl font-semibold text-white">{selectedOrder.vendor}</h2>
-                      <span className="px-2 py-0.5 bg-white/20 rounded text-white text-xs font-semibold">
-                        {formatOrderNumber(selectedOrder.id, 0)}
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-white text-xs font-semibold" title={selectedOrderDetails?.order_code}>
+                        {selectedOrderDetails?.order_code ? formatOrderId(selectedOrderDetails.order_code) : formatOrderNumber(selectedOrder.id, 0)}
                       </span>
                     </div>
                     <p className="text-green-200/80 text-xs">{formatDate(selectedOrder.orderDate)}</p>
@@ -538,6 +631,52 @@ export default function MyOrders() {
                     </div>
                   </div>
                 </div>
+
+                {/* Delivery Staff Info */}
+                {selectedOrderDetails?.delivery_staff && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5">
+                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                      <FaTruck className="text-blue-600" />
+                      Delivery Staff
+                    </h4>
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src={selectedOrderDetails.delivery_staff.profile_photo_url 
+                          ? `${API_BASE.replace(/\/api$/, '')}${selectedOrderDetails.delivery_staff.profile_photo_url}`
+                          : `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedOrderDetails.delivery_staff.full_name || 'Staff')}&background=3b82f6&color=fff`
+                        } 
+                        alt={selectedOrderDetails.delivery_staff.full_name}
+                        className="w-14 h-14 rounded-full object-cover border-2 border-blue-200"
+                      />
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{selectedOrderDetails.delivery_staff.full_name || 'Delivery Staff'}</p>
+                        {selectedOrderDetails.delivery_staff.phone && (
+                          <a href={`tel:${selectedOrderDetails.delivery_staff.phone}`} className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                            <FaPhone className="text-xs" />
+                            {selectedOrderDetails.delivery_staff.phone}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Proof of Delivery */}
+                {selectedOrderDetails?.proof_of_delivery_url && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5">
+                    <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
+                      <FaCheckCircle className="text-green-600" />
+                      Proof of Delivery
+                    </h4>
+                    <img 
+                      src={`${API_BASE.replace(/\/api$/, '')}${selectedOrderDetails.proof_of_delivery_url}`}
+                      alt="Proof of delivery"
+                      className="w-full rounded-lg border border-green-200 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => window.open(`${API_BASE.replace(/\/api$/, '')}${selectedOrderDetails.proof_of_delivery_url}`, '_blank')}
+                    />
+                    <p className="text-xs text-green-700 mt-2 text-center">Click to view full size</p>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex gap-2">

@@ -1,11 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FaMapMarkerAlt, FaPhone, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaPhone, FaClock, FaCheckCircle, FaCamera } from 'react-icons/fa';
 import { API_BASE } from '../../api';
+import { showSuccess, showError } from '../../utils/notifications';
+import { formatOrderId } from '../../utils/orderUtils';
 
 const Deliveries = () => {
   const [filter, setFilter] = useState('all');
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [proofFiles, setProofFiles] = useState({});
+  const [uploading, setUploading] = useState(false);
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -60,15 +64,15 @@ const Deliveries = () => {
           id: o.id,
           orderCode: o.order_code || o.orderCode || '—',
           customer: o.customer_name || 'Customer',
-          phone: o.customer_phone || '',
-          location: o.delivery_address || '—',
+          phone: o.customer_phone || 'No phone',
+          location: o.delivery_address || 'Campus Location',
           items: Array.isArray(o.items)
             ? o.items.map((it) => `${it.name || it.item_name || 'Item'} x${it.quantity || 1}`)
             : [],
           total: o.total || 0,
           status: o.status === 'in-progress' ? 'in-transit' : (o.status || 'pending'),
           available: !!o.available,
-          estimatedTime: '—',
+          estimatedTime: o.eta_minutes ? `${o.eta_minutes} mins` : '15-20 mins',
         }));
         setDeliveries(mapped);
       }
@@ -97,21 +101,53 @@ const Deliveries = () => {
   };
 
   const handleStatusUpdate = async (id, newStatus) => {
+    const payloadStatus = newStatus === 'in-transit' ? 'picked-up' : 'delivered';
+    
+    if (payloadStatus === 'delivered' && !proofFiles[id]) {
+      showError('Please upload proof of delivery before marking as delivered');
+      return;
+    }
+    
     try {
+      setUploading(true);
       const token = localStorage.getItem('token');
-      const payloadStatus = newStatus === 'in-transit' ? 'picked-up' : 'delivered';
+      const formData = new FormData();
+      formData.append('delivery_status', payloadStatus);
+      
+      if (proofFiles[id]) {
+        formData.append('proof_image', proofFiles[id]);
+      }
+      
       const res = await fetch(`${API_BASE}/staff/deliveries/${id}/status`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: payloadStatus }),
+        body: formData,
       });
-      if (res.ok) { await fetchDeliveries(); }
+      
+      if (res.ok) {
+        showSuccess(payloadStatus === 'delivered' ? 'Order marked as delivered!' : 'Delivery started!');
+        setProofFiles(prev => {
+          const updated = { ...prev };
+          delete updated[id];
+          return updated;
+        });
+        await fetchDeliveries();
+      } else {
+        const error = await res.json().catch(() => ({}));
+        showError(error.detail || 'Failed to update status');
+      }
     } catch (e) {
       console.error('Failed to update status', e);
+      showError('Failed to update delivery status');
+    } finally {
+      setUploading(false);
     }
+  };
+  
+  const handleFileChange = (orderId, file) => {
+    setProofFiles(prev => ({ ...prev, [orderId]: file }));
   };
 
   return (
@@ -164,7 +200,9 @@ const Deliveries = () => {
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <p className="text-lg font-bold text-gray-900">{delivery.orderCode}</p>
+                  <p className="text-lg font-bold text-gray-900" title={delivery.orderCode}>
+                    {formatOrderId(delivery.orderCode)}
+                  </p>
                   <p className="text-sm text-gray-600">{delivery.customer}</p>
                 </div>
                 <span
@@ -177,17 +215,21 @@ const Deliveries = () => {
               </div>
 
               <div className="space-y-3 mb-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <FaMapMarkerAlt className="text-teal-600" />
-                  <span>{delivery.location}</span>
+                <div className="flex items-center gap-2 text-sm">
+                  <FaMapMarkerAlt className="text-teal-600 flex-shrink-0" />
+                  <span className="text-gray-900 font-medium">{delivery.location || 'No address provided'}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <FaPhone className="text-teal-600" />
-                  <span>{delivery.phone}</span>
+                <div className="flex items-center gap-2 text-sm">
+                  <FaPhone className="text-teal-600 flex-shrink-0" />
+                  <a href={`tel:${delivery.phone}`} className="text-blue-600 hover:text-blue-700 font-medium">
+                    {delivery.phone || 'No phone number'}
+                  </a>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <FaClock className="text-teal-600" />
-                  <span>ETA: {delivery.estimatedTime}</span>
+                <div className="flex items-center gap-2 text-sm">
+                  <FaClock className="text-teal-600 flex-shrink-0" />
+                  <span className="text-gray-900 font-medium">
+                    ETA: {delivery.estimatedTime || '15-20 mins'}
+                  </span>
                 </div>
               </div>
 
@@ -201,23 +243,86 @@ const Deliveries = () => {
                 <p className="text-sm font-bold text-gray-900">Total: ₱{delivery.total}</p>
               </div>
 
-              <div className="flex gap-3 mt-4">
-                {delivery.status === 'pending' && (
-                  <button
-                    onClick={() => handleStatusUpdate(delivery.id, 'in-transit')}
-                    className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700 transition-colors"
-                  >
-                    {delivery.available ? 'Claim & Start' : 'Start Delivery'}
-                  </button>
-                )}
+              <div className="mt-4 space-y-3">
                 {delivery.status === 'in-transit' && (
-                  <button
-                    onClick={() => handleStatusUpdate(delivery.id, 'completed')}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors"
-                  >
-                    Mark as Delivered
-                  </button>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <label className="block text-sm font-semibold text-amber-900 mb-3 flex items-center gap-2">
+                      <FaCamera className="text-amber-600" />
+                      Proof of Delivery *
+                    </label>
+                    
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <label className="flex flex-col items-center justify-center p-4 bg-white border-2 border-dashed border-green-300 rounded-lg cursor-pointer hover:bg-green-50 transition-colors active:scale-95">
+                        <FaCamera className="text-2xl text-green-600 mb-2" />
+                        <span className="text-xs font-medium text-gray-700">Take Photo</span>
+                        <span className="text-[10px] text-gray-500 mt-1">Use Camera</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleFileChange(delivery.id, e.target.files[0]);
+                            }
+                          }}
+                          className="hidden"
+                          id={`camera-${delivery.id}`}
+                        />
+                      </label>
+                      
+                      <label className="flex flex-col items-center justify-center p-4 bg-white border-2 border-dashed border-blue-300 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors active:scale-95">
+                        <svg className="w-8 h-8 text-blue-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs font-medium text-gray-700">Upload Photo</span>
+                        <span className="text-[10px] text-gray-500 mt-1">From Gallery</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleFileChange(delivery.id, e.target.files[0]);
+                            }
+                          }}
+                          className="hidden"
+                          id={`gallery-${delivery.id}`}
+                        />
+                      </label>
+                    </div>
+                    
+                    {proofFiles[delivery.id] && (
+                      <div className="bg-white rounded-lg p-3 border border-green-200">
+                        <p className="text-xs text-green-700 font-medium flex items-center gap-2">
+                          <FaCheckCircle /> Photo selected: {proofFiles[delivery.id].name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Size: {(proofFiles[delivery.id].size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
+                
+                <div className="flex gap-3">
+                  {delivery.status === 'pending' && (
+                    <button
+                      onClick={() => handleStatusUpdate(delivery.id, 'in-transit')}
+                      disabled={uploading}
+                      className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {delivery.available ? 'Claim & Start' : 'Start Delivery'}
+                    </button>
+                  )}
+                  {delivery.status === 'in-transit' && (
+                    <button
+                      onClick={() => handleStatusUpdate(delivery.id, 'completed')}
+                      disabled={!proofFiles[delivery.id] || uploading}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {uploading ? 'Uploading...' : 'Mark as Delivered'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))

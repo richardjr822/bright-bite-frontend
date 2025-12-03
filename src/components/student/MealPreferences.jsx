@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   FaUser, FaWeight, FaRuler, FaBirthdayCake, FaVenus, FaMars, FaBullseye, FaRunning,
   FaLeaf, FaAllergies, FaFire, FaUtensils, FaClock, FaDumbbell, FaAppleAlt,
@@ -43,6 +43,8 @@ const STEPS = [
 
 const MealPreferences = ({ onComplete = () => {}, redirectTo = "/meal-planner" }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isFirstLogin = location.state?.isFirstLogin || false;
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     age: "", sex: "", height: "", weight: "", goal: "", activityLevel: "",
@@ -115,8 +117,14 @@ const MealPreferences = ({ onComplete = () => {}, redirectTo = "/meal-planner" }
     // Small delay to flush localStorage in some browsers
     await new Promise(r => setTimeout(r, 50));
 
+    // If this is first login, mark it as complete and redirect to dashboard
+    if (isFirstLogin) {
+      localStorage.setItem('hasCompletedFirstLogin', 'true');
+    }
+
     try {
-      navigate(redirectTo, { replace: true, state: { preferences: prefsForState, saved: ok } });
+      const destination = isFirstLogin ? '/dashboard' : redirectTo;
+      navigate(destination, { replace: true, state: { preferences: prefsForState, saved: ok } });
     } catch (navErr) {
       console.error("MealPreferences: navigate failed", navErr);
     } finally {

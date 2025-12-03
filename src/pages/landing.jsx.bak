@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth, ROLE_ROUTES } from "../context/AuthContext";
 import { FaLeaf, FaWallet, FaShoppingCart, FaUsers, FaCalendarAlt, FaChartLine, FaArrowRight, FaCheckCircle } from "react-icons/fa";
 import { LandingSEO } from "../components/seo/SEO";
 
@@ -8,13 +7,6 @@ export default function Landing() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { isAuthenticated, user } = useAuth();
-
-  // Get the appropriate dashboard path based on user role
-  const getDashboardPath = () => {
-    if (!user?.role) return '/dashboard';
-    return ROLE_ROUTES[user.role] || '/dashboard';
-  };
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 40);
@@ -199,23 +191,13 @@ export default function Landing() {
               How It Works
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[var(--brand-main)] group-hover:w-full transition-all duration-300"></span>
             </a>
-            {isAuthenticated ? (
-              <Link
-                to={getDashboardPath()}
-                className="inline-flex items-center px-5 py-2.5 rounded-lg text-white font-semibold shadow-sm transition-all transform hover:-translate-y-[1px] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-main)]/20 text-sm bg-[var(--brand-dark)] hover:bg-[var(--brand-main)]"
-                aria-label="Go to Dashboard"
-              >
-                Dashboard
-              </Link>
-            ) : (
-              <Link
-                to="/login"
-                className="inline-flex items-center px-5 py-2.5 rounded-lg text-white font-semibold shadow-sm transition-all transform hover:-translate-y-[1px] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-main)]/20 text-sm bg-[var(--brand-dark)] hover:bg-[var(--brand-main)]"
-                aria-label="Client Login"
-              >
-                Login
-              </Link>
-            )}
+            <Link
+              to="/login"
+              className="inline-flex items-center px-5 py-2.5 rounded-lg text-white font-semibold shadow-sm transition-all transform hover:-translate-y-[1px] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-main)]/20 text-sm bg-[var(--brand-dark)] hover:bg-[var(--brand-main)]"
+              aria-label="Client Login"
+            >
+              Login
+            </Link>
           </div>
 
           <button
@@ -267,23 +249,13 @@ export default function Landing() {
               >
                 How It Works
               </a>
-              {isAuthenticated ? (
-                <Link
-                  to={getDashboardPath()}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block py-2 px-3 rounded-md text-white text-center bg-[var(--brand-dark)] hover:bg-[var(--brand-main)] font-semibold text-sm transition-colors"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <Link
-                  to="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block py-2 px-3 rounded-md text-white text-center bg-[var(--brand-dark)] hover:bg-[var(--brand-main)] font-semibold text-sm transition-colors"
-                >
-                  Login
-                </Link>
-              )}
+              <Link
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 px-3 rounded-md text-white text-center bg-[var(--brand-dark)] hover:bg-[var(--brand-main)] font-semibold text-sm transition-colors"
+              >
+                Login
+              </Link>
             </div>
           </div>
         )}
@@ -307,25 +279,14 @@ export default function Landing() {
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                {isAuthenticated ? (
-                  <Link
-                    to={getDashboardPath()}
-                    className="btn-shimmer inline-flex items-center gap-2 px-7 py-4 rounded-xl text-white font-semibold shadow-lg transition-all duration-300 transform hover:-translate-y-1.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-gradient-to-r from-[var(--brand-dark)] to-[var(--brand-main)] hover:from-[var(--brand-main)] hover:to-[var(--brand-light)] animate-glow"
-                    aria-label="Go to Dashboard"
-                  >
-                    Go to Dashboard
-                    <FaArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                ) : (
-                  <Link
-                    to="/register"
-                    className="btn-shimmer inline-flex items-center gap-2 px-7 py-4 rounded-xl text-white font-semibold shadow-lg transition-all duration-300 transform hover:-translate-y-1.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-gradient-to-r from-[var(--brand-dark)] to-[var(--brand-main)] hover:from-[var(--brand-main)] hover:to-[var(--brand-light)] animate-glow"
-                    aria-label="Get Started"
-                  >
-                    Get Started Free
-                    <FaArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                )}
+                <Link
+                  to="/register"
+                  className="btn-shimmer inline-flex items-center gap-2 px-7 py-4 rounded-xl text-white font-semibold shadow-lg transition-all duration-300 transform hover:-translate-y-1.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-gradient-to-r from-[var(--brand-dark)] to-[var(--brand-main)] hover:from-[var(--brand-main)] hover:to-[var(--brand-light)] animate-glow"
+                  aria-label="Get Started"
+                >
+                  Get Started Free
+                  <FaArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </Link>
                 <a
                   href="#what-we-offer"
                   className="group inline-flex items-center gap-2 px-7 py-4 rounded-xl font-medium border-2 border-neutral-300 transition-all duration-300 hover:border-[var(--brand-main)] hover:text-[var(--brand-main)] hover:shadow-lg hover:bg-[var(--brand-main)]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 text-neutral-700"
@@ -449,11 +410,11 @@ export default function Landing() {
           
           <div className="mt-16 text-center">
             <Link
-              to={isAuthenticated ? getDashboardPath() : "/register"}
+              to="/register"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white font-semibold transition-all transform hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-[var(--brand-dark)] hover:bg-[var(--brand-main)] shadow-lg"
-              aria-label={isAuthenticated ? "Go to Dashboard" : "Get Started"}
+              aria-label="Get Started"
             >
-              {isAuthenticated ? "Go to Dashboard" : "Get Started Today"}
+              Get Started Today
               <FaArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -556,11 +517,11 @@ export default function Landing() {
           
           <div className="mt-16 text-center">
             <Link
-              to={isAuthenticated ? getDashboardPath() : "/register"}
+              to="/register"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white font-semibold transition-all transform hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-main)]/20 bg-[var(--brand-dark)] hover:bg-[var(--brand-main)] shadow-lg"
-              aria-label={isAuthenticated ? "Go to Dashboard" : "Start Your Journey"}
+              aria-label="Start Your Journey"
             >
-              {isAuthenticated ? "Go to Dashboard" : "Start Your Journey Today"}
+              Start Your Journey Today
               <FaArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -581,10 +542,10 @@ export default function Landing() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
-              to={isAuthenticated ? getDashboardPath() : "/register"}
+              to="/register"
               className="btn-shimmer group inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-[var(--brand-dark)] font-semibold shadow-xl transition-all duration-300 transform hover:-translate-y-1.5 hover:shadow-2xl hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/20"
             >
-              {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}
+              Get Started Free
               <FaArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
             <a

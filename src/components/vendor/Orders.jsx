@@ -7,8 +7,12 @@ import {
   FaSpinner,
   FaSearch,
   FaFilter,
-  FaUser
+  FaUser,
+  FaTruck,
+  FaPhone,
+  FaImage
 } from 'react-icons/fa';
+import { formatOrderId } from '../../utils/orderUtils';
 import { API_BASE } from '../../api';
 
 // Format order number to short readable format (e.g., #0001)
@@ -336,6 +340,49 @@ export default function Orders() {
                   </div>
                 )}
               </div>
+
+              {/* Delivery Staff & Proof of Delivery */}
+              {(order.assigned_staff || order.proof_of_delivery_url) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  {order.assigned_staff && (
+                    <div className="flex items-center gap-3 mb-3">
+                      <img 
+                        src={order.assigned_staff.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(order.assigned_staff.full_name || 'Staff')}`}
+                        alt={order.assigned_staff.full_name}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-blue-200"
+                      />
+                      <div>
+                        <p className="font-semibold text-gray-900 flex items-center gap-2">
+                          <FaTruck className="text-blue-600 text-sm" />
+                          {order.assigned_staff.full_name || 'Delivery Staff'}
+                        </p>
+                        {order.assigned_staff.phone && (
+                          <a href={`tel:${order.assigned_staff.phone}`} className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                            <FaPhone className="text-xs" />
+                            {order.assigned_staff.phone}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {order.proof_of_delivery_url && (
+                    <div>
+                      <p className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
+                        <FaImage className="text-green-600" />
+                        Proof of Delivery
+                      </p>
+                      <img 
+                        src={`${API_BASE.replace(/\/api$/, '')}${order.proof_of_delivery_url}`}
+                        alt="Proof of delivery"
+                        className="w-full max-w-xs rounded-lg border border-green-200 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => window.open(`${API_BASE.replace(/\/api$/, '')}${order.proof_of_delivery_url}`, '_blank')}
+                      />
+                      <p className="text-xs text-green-700 mt-1">Click to view full size</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Action Buttons */}
               {order.status !== 'completed' && order.status !== 'cancelled' && (

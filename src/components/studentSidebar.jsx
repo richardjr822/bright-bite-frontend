@@ -21,7 +21,8 @@ import {
   FaHome
 } from "react-icons/fa";
 import { useLocation, useNavigate } from "react-router-dom";
-import { logout } from "../utils/auth";
+import { logout as utilsLogout } from "../utils/auth";
+import { useAuth } from "../context/AuthContext";
 import { API_BASE } from "../api";
 
 const LogoutModal = ({ isOpen, onCancel, onConfirm }) => {
@@ -76,6 +77,7 @@ const LogoutModal = ({ isOpen, onCancel, onConfirm }) => {
 const StudentSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout: authLogout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
@@ -209,8 +211,10 @@ const StudentSidebar = () => {
   
   const confirmLogout = async () => {
     setShowLogoutDialog(false);
-    // Use centralized logout function
-    await logout(navigate);
+    // Clear auth state from context and localStorage
+    authLogout();
+    // Navigate to login page
+    navigate('/login', { replace: true });
   };
   
   const cancelLogout = () => {
@@ -493,64 +497,23 @@ const MenuItem = ({ to, icon: Icon, label, isActive, color = "green", badge = nu
     navigate(to);
   };
   
-  // Light mode color scheme mapping
+  // Monochromatic green color scheme for all items
+  const monoGreen = {
+    active: 'bg-[#0d3d23] text-white shadow-sm',
+    icon: 'text-white',
+    hover: 'hover:bg-[#0d3d23]/5',
+    inactive: 'text-gray-700',
+    inactiveIcon: 'text-[#1a5d3a]'
+  };
   const colorClasses = {
-    green: {
-      active: 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md shadow-green-200',
-      icon: 'text-white',
-      hover: 'hover:bg-green-50',
-      inactive: 'text-gray-600',
-      inactiveIcon: 'text-gray-500'
-    },
-    emerald: {
-      active: 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-200',
-      icon: 'text-white',
-      hover: 'hover:bg-emerald-50',
-      inactive: 'text-gray-600',
-      inactiveIcon: 'text-gray-500'
-    },
-    blue: {
-      active: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200',
-      icon: 'text-white',
-      hover: 'hover:bg-blue-50',
-      inactive: 'text-gray-600',
-      inactiveIcon: 'text-gray-500'
-    },
-    red: {
-      active: 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md shadow-red-200',
-      icon: 'text-white',
-      hover: 'hover:bg-red-50',
-      inactive: 'text-gray-600',
-      inactiveIcon: 'text-gray-500'
-    },
-    yellow: {
-      active: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-md shadow-yellow-200',
-      icon: 'text-white',
-      hover: 'hover:bg-yellow-50',
-      inactive: 'text-gray-600',
-      inactiveIcon: 'text-gray-500'
-    },
-    purple: {
-      active: 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md shadow-purple-200',
-      icon: 'text-white',
-      hover: 'hover:bg-purple-50',
-      inactive: 'text-gray-600',
-      inactiveIcon: 'text-gray-500'
-    },
-    pink: {
-      active: 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-md shadow-pink-200',
-      icon: 'text-white',
-      hover: 'hover:bg-pink-50',
-      inactive: 'text-gray-600',
-      inactiveIcon: 'text-gray-500'
-    },
-    gray: {
-      active: 'bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-md shadow-gray-200',
-      icon: 'text-white',
-      hover: 'hover:bg-gray-100',
-      inactive: 'text-gray-600',
-      inactiveIcon: 'text-gray-500'
-    }
+    green: monoGreen,
+    emerald: monoGreen,
+    blue: monoGreen,
+    red: monoGreen,
+    yellow: monoGreen,
+    purple: monoGreen,
+    pink: monoGreen,
+    gray: monoGreen
   };
   
   const classes = colorClasses[color] || colorClasses.green;
@@ -579,7 +542,7 @@ const MenuItem = ({ to, icon: Icon, label, isActive, color = "green", badge = nu
             
             {/* Badge (e.g., "New") */}
             {badge && (
-              <span className="ml-2 px-2 py-0.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[10px] font-bold rounded-full shadow-sm">
+              <span className="ml-2 px-2 py-0.5 bg-[#0d3d23] text-white text-[10px] font-bold rounded-full">
                 {badge}
               </span>
             )}

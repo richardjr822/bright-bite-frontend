@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import SEO from '../../components/seo/SEO';
 import {
   FaStore,
   FaSearch,
@@ -891,7 +892,7 @@ export default function CampusCanteen() {
     paymentMethod: 'cash'
   });
 
-  const { order, status, etaMinutes, startOrder, dismissOrder } = useOrderLifecycle();
+  const { order, status, etaMinutes, isModalOpen, startOrder, dismissOrder, closeModal, openModal } = useOrderLifecycle();
 
   // Backend-powered vendors
 
@@ -1123,17 +1124,23 @@ export default function CampusCanteen() {
   };
 
   const handleOrderClose = () => {
-    // Dismiss the tracking modal
-    dismissOrder();
-    // Clear cart and reset form after order completion
-    setCart([]);
-    setOrderDetails({
-      name: '',
-      phone: '',
-      email: '',
-      specialInstructions: '',
-      paymentMethod: 'cash'
-    });
+    // Check if order is in a terminal state (completed, delivered, rejected)
+    const terminalStatuses = ['DELIVERED', 'COMPLETED', 'RATING_PENDING', 'REJECTED'];
+    if (terminalStatuses.includes(status)) {
+      // Fully dismiss the order and clear cart
+      dismissOrder();
+      setCart([]);
+      setOrderDetails({
+        name: '',
+        phone: '',
+        email: '',
+        specialInstructions: '',
+        paymentMethod: 'cash'
+      });
+    } else {
+      // Just close the modal but keep the order active (can be reopened)
+      closeModal();
+    }
   };
 
   const handleInputChange = useCallback((field, value) => {
@@ -1161,6 +1168,11 @@ export default function CampusCanteen() {
   const categories = ['all', ...new Set(menuItems.map(item => item.category))];
   const currentVendor = getCurrentVendor(); // add this
   return (
+    <>
+    <SEO 
+      title="Campus Canteen - BrightBites"
+      description="Order delicious meals from campus food vendors"
+    />
     <div className="min-h-screen bg-slate-50/80 pb-24">
       {/* Refined Header */}
       <div className="bg-white border-b border-slate-200/60">
@@ -1472,8 +1484,19 @@ export default function CampusCanteen() {
           />
         )}
 
-        {/* Order Tracking Modal - Show ONLY when order exists (replaces checkout) */}
-        {order && (
+        {/* Active Order Floating Button - Shows when order exists but modal is closed */}
+        {order && !isModalOpen && (
+          <button
+            onClick={openModal}
+            className="fixed bottom-24 right-4 z-40 bg-[#0d3d23] text-white px-4 py-3 rounded-full shadow-lg hover:bg-[#1a5d3a] transition-all flex items-center gap-2 animate-pulse"
+          >
+            <FaClock className="text-sm" />
+            <span className="text-sm font-medium">View Order Status</span>
+          </button>
+        )}
+
+        {/* Order Tracking Modal - Show when modal is open */}
+        {order && isModalOpen && (
           <OrderTracking
             order={order}
             status={status}
@@ -1500,6 +1523,7 @@ export default function CampusCanteen() {
         )}
       </div>
     </div>
+    </>
   );
 }
 

@@ -1,7 +1,14 @@
 import React from 'react';
 import { FaBox, FaClipboardList, FaHistory, FaUser, FaSignOutAlt, FaTruck } from 'react-icons/fa';
+import { API_BASE } from '../../api';
 
 const StaffSidebar = ({ sidebarRef, sidebarOpen, isMobileView, mounted, staffData, activeTab, onSelectTab, onLogout }) => {
+  const getProfilePhotoUrl = () => {
+    if (staffData?.profile_photo_url) {
+      return `${API_BASE.replace(/\/api$/, '')}${staffData.profile_photo_url}`;
+    }
+    return null;
+  };
   const menuItems = [
     { id: 'overview', label: 'Dashboard', icon: FaTruck },
     { id: 'deliveries', label: 'My Deliveries', icon: FaBox },
@@ -23,7 +30,7 @@ const StaffSidebar = ({ sidebarRef, sidebarOpen, isMobileView, mounted, staffDat
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-[#0d3d23] rounded-lg flex items-center justify-center">
             <FaTruck className="text-white text-lg" />
           </div>
           <div>
@@ -31,9 +38,24 @@ const StaffSidebar = ({ sidebarRef, sidebarOpen, isMobileView, mounted, staffDat
             <p className="text-xs text-gray-500">Delivery Staff</p>
           </div>
         </div>
-        <div className="mt-4 p-3 bg-teal-50 rounded-lg">
-          <p className="text-xs font-medium text-teal-900">{staffData?.full_name || 'Delivery Staff'}</p>
-          <p className="text-xs text-teal-700 mt-1">ID: {staffData?.staff_id || 'Loading...'}</p>
+        <div className="mt-4 p-3 bg-[#0d3d23]/5 rounded-lg flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-[#0d3d23]/10 flex-shrink-0">
+            {getProfilePhotoUrl() ? (
+              <img
+                src={getProfilePhotoUrl()}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[#0d3d23] font-bold">
+                {staffData?.full_name?.charAt(0) || 'D'}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-gray-900 truncate">{staffData?.full_name || 'Delivery Staff'}</p>
+            <p className="text-xs text-gray-600 mt-0.5">ID: {staffData?.staff_id || 'Loading...'}</p>
+          </div>
         </div>
       </div>
 
@@ -51,12 +73,12 @@ const StaffSidebar = ({ sidebarRef, sidebarOpen, isMobileView, mounted, staffDat
                     w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
                     transition-all duration-200
                     ${isActive
-                      ? 'bg-teal-50 text-teal-700 shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-[#0d3d23] text-white shadow-sm'
+                      : 'text-gray-700 hover:bg-[#0d3d23]/5 hover:text-gray-900'
                     }
                   `}
                 >
-                  <Icon className={`text-lg ${isActive ? 'text-teal-600' : 'text-gray-400'}`} />
+                  <Icon className={`text-lg ${isActive ? 'text-white' : 'text-[#1a5d3a]'}`} />
                   <span>{item.label}</span>
                 </button>
               </li>

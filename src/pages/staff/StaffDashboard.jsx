@@ -109,37 +109,39 @@ const StaffDashboard = () => {
     return match === '' ? 'overview' : match.split('/')[0];
   })();
 
-  useEffect(() => {
-    const fetchStaffData = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-        if (!token || !user?.id) {
-          setLoading(false);
-          navigate('/login');
-          return;
-        }
-
-        const response = await fetch(`${API_BASE}/staff/profile/${user.id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch staff data');
-        }
-        
-        const data = await response.json();
-        setStaffData(data);
-      } catch (error) {
-        console.error('Error fetching staff data:', error);
-      } finally {
+  const fetchStaffData = async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token || !user?.id) {
         setLoading(false);
+        navigate('/login');
+        return;
       }
-    };
 
+      const response = await fetch(`${API_BASE}/staff/profile/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch staff data');
+      }
+      
+      const data = await response.json();
+      setStaffData(data);
+    } catch (error) {
+      console.error('Error fetching staff data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshStaffData = () => fetchStaffData(false);
+
+  useEffect(() => {
     fetchStaffData();
   }, [user]);
 
@@ -209,7 +211,7 @@ const StaffDashboard = () => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto px-4 py-6 lg:px-8">
-        <Outlet context={{ staffData }} />
+        <Outlet context={{ staffData, refreshStaffData }} />
       </main>
 
       {/* Logout Modal */}

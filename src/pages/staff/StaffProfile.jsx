@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaPhone, FaIdCard, FaLock, FaSave } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaIdCard, FaLock, FaSave, FaCamera } from 'react-icons/fa';
+import { toast } from 'react-hot-toast';
 import { API_BASE } from '../../api';
 
 const StaffProfile = () => {
-  const { staffData } = useOutletContext();
+  const { staffData, refreshStaffData } = useOutletContext();
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -17,6 +18,32 @@ const StaffProfile = () => {
     full_name: staffData?.full_name || '',
     phone: staffData?.phone || '',
   });
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Photo must be less than 5MB');
+        return;
+      }
+      setProfilePhoto(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPhotoPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const getProfilePhotoUrl = () => {
+    if (photoPreview) return photoPreview;
+    if (staffData?.profile_photo_url) {
+      return `${API_BASE.replace(/\/api$/, '')}${staffData.profile_photo_url}`;
+    }
+    return null;
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,6 +58,9 @@ const StaffProfile = () => {
       const fd = new FormData();
       fd.append('full_name', formData.full_name || '');
       fd.append('phone', formData.phone || '');
+      if (profilePhoto) {
+        fd.append('profile_photo', profilePhoto);
+      }
 
       const res = await fetch(`${API_BASE}/staff/profile/${user.id}`, {
         method: 'PUT',
@@ -40,11 +70,18 @@ const StaffProfile = () => {
         body: fd,
       });
       if (res.ok) {
-        // Optionally we could refresh profile data here
+        toast.success('Profile updated successfully');
+        setProfilePhoto(null);
+        setPhotoPreview(null);
         setIsEditing(false);
+        // Refresh staff data if available
+        if (refreshStaffData) refreshStaffData();
+      } else {
+        toast.error('Failed to update profile');
       }
     } catch (e) {
       console.error('Failed to update profile', e);
+      toast.error('Failed to update profile');
     }
   };
 
@@ -60,12 +97,43 @@ const StaffProfile = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-blue-50">
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-              {staffData?.full_name?.charAt(0) || 'D'}
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white text-3xl font-bold">
+                {getProfilePhotoUrl() ? (
+                  <img
+                    src={getProfilePhotoUrl()}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  staffData?.full_name?.charAt(0) || 'D'
+                )}
+              </div>
+              {isEditing && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-teal-700 transition-colors"
+                  >
+                    <FaCamera className="text-sm" />
+                  </button>
+                </>
+              )}
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{staffData?.full_name || 'Delivery Staff'}</h2>
               <p className="text-sm text-gray-600">Staff ID: {staffData?.staff_id || 'N/A'}</p>
+              {isEditing && photoPreview && (
+                <p className="text-xs text-teal-600 mt-1">New photo selected - save to apply</p>
+              )}
             </div>
           </div>
         </div>
@@ -275,6 +343,8 @@ const StaffProfile = () => {
                       full_name: staffData?.full_name || '',
                       phone: staffData?.phone || '',
                     });
+                    setProfilePhoto(null);
+                    setPhotoPreview(null);
                   }}
                   className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
                 >

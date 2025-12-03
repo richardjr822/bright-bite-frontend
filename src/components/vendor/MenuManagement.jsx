@@ -13,9 +13,11 @@ import {
   FaImage,
   FaTag,
   FaPercent,
-  FaRobot
+  FaRobot,
+  FaStar
 } from 'react-icons/fa';
 import { API_BASE } from '../../api';
+import { showSuccess, showError } from '../../utils/notifications';
 
 const CATEGORY_OPTIONS = [
   'Pasta', 'Pizza', 'Main', 'Salad', 'Dessert', 'Burger', 'Drinks', 'Sides'
@@ -46,6 +48,7 @@ export default function MenuManagement() {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiRecs, setAiRecs] = useState([]);
+  const [aiInsights, setAiInsights] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -246,7 +249,52 @@ export default function MenuManagement() {
       }
     } catch (err) {
       console.error('Error toggling availability:', err);
-      // no local mutation
+    }
+  };
+
+  const togglePromote = async (item) => {
+    try {
+      const token = localStorage.getItem('token');
+      const newPromoteStatus = !item.is_promoted;
+      if (!token || !user?.id) throw new Error('Missing auth');
+
+      if (newPromoteStatus) {
+        const currentlyPromoted = menuItems.filter(i => i.is_promoted);
+        if (currentlyPromoted.length >= 1) {
+          const promotedItem = currentlyPromoted[0];
+          showError(`Only 1 meal can be promoted! Please unpromote "${promotedItem.name}" first.`);
+          return;
+        }
+      }
+
+      const response = await fetch(`${API_BASE}/vendor/menu/${item.id}/promote`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_promoted: newPromoteStatus })
+      });
+
+      if (response.ok) {
+        setMenuItems(prevItems =>
+          prevItems.map(i =>
+            i.id === item.id ? { ...i, is_promoted: newPromoteStatus } : i
+          )
+        );
+        
+        if (newPromoteStatus) {
+          showSuccess(`🌟 "${item.name}" is now promoted and visible to students!`);
+        } else {
+          showSuccess(`"${item.name}" has been unpromoted.`);
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to update promotion status');
+      }
+    } catch (err) {
+      console.error('Error toggling promotion:', err);
+      showError(err.message || 'Failed to update promotion status. Please try again.');
     }
   };
 
@@ -292,10 +340,12 @@ export default function MenuManagement() {
                 const res = await fetch(`${API_BASE}/vendor/ai/recommendations/${user.id}?limit=5`, {
                   headers: { Authorization: `Bearer ${token}` }
                 });
-                const data = res.ok ? await res.json() : { recommendations: [] };
+                const data = res.ok ? await res.json() : { recommendations: [], insights: null };
                 setAiRecs(data.recommendations || []);
+                setAiInsights(data.insights || null);
               } catch (e) {
                 setAiRecs([]);
+                setAiInsights(null);
               } finally {
                 setAiLoading(false);
               }
@@ -306,11 +356,66 @@ export default function MenuManagement() {
           </button>
         </div>
         {aiOpen && (
-          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="mt-3">
+            {/* Student Insights Summary */}
+            {!aiLoading && aiInsights && (
+              <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <span className="text-lg">📊</span> Student Insights Summary
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                    <p className="text-gray-500 text-xs">Students Analyzed</p>
+                    <p className="font-bold text-blue-700">{aiInsights.total_students_analyzed}</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-green-100">
+                    <p className="text-gray-500 text-xs">Top Goal</p>
+                    <p className="font-bold text-green-700 capitalize">{aiInsights.top_goal}</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-purple-100">
+                    <p className="text-gray-500 text-xs">Top Macro Pref</p>
+                    <p className="font-bold text-purple-700 capitalize">{aiInsights.top_macro}</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-orange-100">
+                    <p className="text-gray-500 text-xs">Avg Calorie Target</p>
+                    <p className="font-bold text-orange-700">{aiInsights.avg_calorie_target} kcal</p>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                  <div className="bg-white rounded-lg p-3 border border-pink-100">
+                    <p className="text-gray-500 text-xs mb-1">Avg Budget / Suggested Price</p>
+                    <p className="font-bold text-pink-700">₱{aiInsights.avg_budget?.toFixed(0)} / ₱{aiInsights.suggested_price}</p>
+                  </div>
+                  {aiInsights.common_dietary_prefs?.length > 0 && (
+                    <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                      <p className="text-gray-500 text-xs mb-1">Dietary Preferences</p>
+                      <div className="flex flex-wrap gap-1">
+                        {aiInsights.common_dietary_prefs.map((d, i) => (
+                          <span key={i} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs">{d}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {aiInsights.allergies_to_avoid?.length > 0 && (
+                    <div className="bg-white rounded-lg p-3 border border-red-100">
+                      <p className="text-gray-500 text-xs mb-1">⚠️ Common Allergies to Avoid</p>
+                      <div className="flex flex-wrap gap-1">
+                        {aiInsights.allergies_to_avoid.map((a, i) => (
+                          <span key={i} className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">{a}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Recommendations Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {aiLoading ? (
               <div className="col-span-full flex items-center justify-center py-8"><FaSpinner className="animate-spin text-green-600" /></div>
             ) : aiRecs.length === 0 ? (
-              <div className="col-span-full text-center text-gray-600 py-6">No suggestions right now</div>
+              <div className="col-span-full text-center text-gray-600 py-6">{aiInsights?.message || 'No suggestions right now'}</div>
             ) : (
               aiRecs.map((r, idx) => (
                 <div key={idx} className="border border-gray-200 rounded-xl p-4 bg-white">
@@ -380,6 +485,7 @@ export default function MenuManagement() {
                 </div>
               ))
             )}
+            </div>
           </div>
         )}
       </div>
@@ -490,7 +596,6 @@ export default function MenuManagement() {
                 )}
               </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => toggleAvailability(item)}
@@ -502,6 +607,17 @@ export default function MenuManagement() {
                   >
                     {item.is_available ? <FaToggleOn /> : <FaToggleOff />}
                     {item.is_available ? 'Available' : 'Unavailable'}
+                  </button>
+                  <button
+                    onClick={() => togglePromote(item)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      item.is_promoted
+                        ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                    title={item.is_promoted ? 'Unpromote' : 'Promote'}
+                  >
+                    <FaStar />
                   </button>
                   <button
                     onClick={() => handleOpenModal(item)}
@@ -602,9 +718,10 @@ export default function MenuManagement() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nutrition</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nutrition Information</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Calories (kcal)</label>
                     <input
                       type="number"
                       min="0"
@@ -612,10 +729,11 @@ export default function MenuManagement() {
                       value={formData.calories}
                       onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="Calories (kcal)"
+                      placeholder="550"
                     />
                   </div>
                   <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Protein (g)</label>
                     <input
                       type="number"
                       min="0"
@@ -623,10 +741,11 @@ export default function MenuManagement() {
                       value={formData.protein}
                       onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="Protein (g)"
+                      placeholder="25"
                     />
                   </div>
                   <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Carbs (g)</label>
                     <input
                       type="number"
                       min="0"
@@ -634,10 +753,11 @@ export default function MenuManagement() {
                       value={formData.carbs}
                       onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="Carbs (g)"
+                      placeholder="45"
                     />
                   </div>
                   <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Fiber (g)</label>
                     <input
                       type="number"
                       min="0"
@@ -645,7 +765,7 @@ export default function MenuManagement() {
                       value={formData.fiber}
                       onChange={(e) => setFormData({ ...formData, fiber: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="Fiber (g)"
+                      placeholder="5"
                     />
                   </div>
                 </div>

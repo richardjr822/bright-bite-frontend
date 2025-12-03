@@ -112,7 +112,14 @@ export async function getMealPreferences(userId) {
 
 export function saveMealPreferences(userId, prefs) {
   // PATCH upsert body: { userId, ...snake_case prefs }
-  const body = { userId, ...toBackendPrefs(prefs) };
+  const backendPrefs = toBackendPrefs(prefs);
+  const body = { userId, ...backendPrefs };
+  
+  // Debug: log what we're sending
+  console.log("[saveMealPreferences] Input prefs:", prefs);
+  console.log("[saveMealPreferences] Backend prefs:", backendPrefs);
+  console.log("[saveMealPreferences] Full body:", body);
+  
   return apiClient(`/meal-plans/preferences`, {
     method: 'PATCH',
     body: JSON.stringify(body),
@@ -125,5 +132,56 @@ export function generateMealPlan(userId, payload = {}) {
     method: 'POST',
     body: JSON.stringify(body),
   });
+}
+
+// ==================== INSIGHTS API ====================
+
+// Privacy Agreement
+export function getPrivacyStatus() {
+  return apiClient('/insights/privacy-status');
+}
+
+export function acceptPrivacy() {
+  return apiClient('/insights/accept-privacy', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+// Goals & Insights
+export function getUserGoals() {
+  return apiClient('/insights/goals');
+}
+
+// Engagement Tracking
+export function trackEngagementEvent(eventType, metadata = {}) {
+  return apiClient('/insights/track-event', {
+    method: 'POST',
+    body: JSON.stringify({ event_type: eventType, metadata }),
+  });
+}
+
+export function getEngagementSummary() {
+  return apiClient('/insights/engagement-summary');
+}
+
+// Recommendations
+export function getMealRecommendations() {
+  return apiClient('/insights/recommendations');
+}
+
+// Next Week Preview
+export function getNextWeekPreview() {
+  return apiClient('/insights/next-week-preview');
+}
+
+// Meal Rankings (feedback-based)
+export function getMealRankings(limit = 20) {
+  return apiClient(`/insights/meal-rankings?limit=${limit}`);
+}
+
+// Vendor: Student Analytics
+export function getVendorStudentAnalytics() {
+  return apiClient('/insights/vendor/student-analytics');
 }
 

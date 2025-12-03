@@ -72,52 +72,22 @@ const LogoutModal = ({ isOpen, onCancel, onConfirm }) => {
 
 // MenuItem Component
 const MenuItem = ({ icon: Icon, label, isActive, color = "blue", to, badge }) => {
+  // Monochromatic green color scheme
+  const monoGreen = {
+    active: 'bg-[#0d3d23]',
+    inactive: 'text-gray-700 hover:bg-[#0d3d23]/5',
+    icon: 'text-[#1a5d3a]'
+  };
   const colorClasses = {
-    blue: {
-      active: 'from-blue-600 to-blue-700 border-blue-300',
-      inactive: 'text-gray-700 hover:bg-blue-50',
-      icon: 'text-blue-600'
-    },
-    green: {
-      active: 'from-green-600 to-green-700 border-green-300',
-      inactive: 'text-gray-700 hover:bg-green-50',
-      icon: 'text-green-600'
-    },
-    purple: {
-      active: 'from-purple-600 to-purple-700 border-purple-300',
-      inactive: 'text-gray-700 hover:bg-purple-50',
-      icon: 'text-purple-600'
-    },
-    orange: {
-      active: 'from-orange-600 to-orange-700 border-orange-300',
-      inactive: 'text-gray-700 hover:bg-orange-50',
-      icon: 'text-orange-600'
-    },
-    indigo: {
-      active: 'from-indigo-600 to-indigo-700 border-indigo-300',
-      inactive: 'text-gray-700 hover:bg-indigo-50',
-      icon: 'text-indigo-600'
-    },
-    amber: {
-      active: 'from-amber-600 to-amber-700 border-amber-300',
-      inactive: 'text-gray-700 hover:bg-amber-50',
-      icon: 'text-amber-600'
-    },
-    emerald: {
-      active: 'from-emerald-600 to-emerald-700 border-emerald-300',
-      inactive: 'text-gray-700 hover:bg-emerald-50',
-      icon: 'text-emerald-600'
-    },
-    gray: {
-      active: 'from-gray-600 to-gray-700 border-gray-300',
-      inactive: 'text-gray-700 hover:bg-gray-50',
-      icon: 'text-gray-600'
-    },
-    pink: {
-      active: 'from-pink-600 to-pink-700 border-pink-300',
-      inactive: 'text-gray-700 hover:bg-pink-50',
-      icon: 'text-pink-600'
-    }
+    blue: monoGreen,
+    green: monoGreen,
+    purple: monoGreen,
+    orange: monoGreen,
+    indigo: monoGreen,
+    amber: monoGreen,
+    emerald: monoGreen,
+    gray: monoGreen,
+    pink: monoGreen
   };
 
   const colors = colorClasses[color] || colorClasses.blue;
@@ -127,7 +97,7 @@ const MenuItem = ({ icon: Icon, label, isActive, color = "blue", to, badge }) =>
       to={to}
       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl mb-1.5 transition-all duration-200 group ${
         isActive
-          ? `bg-gradient-to-r ${colors.active} text-white shadow-md border`
+          ? `${colors.active} text-white shadow-sm`
           : `${colors.inactive} border border-transparent`
       }`}
     >

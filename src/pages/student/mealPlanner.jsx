@@ -180,23 +180,31 @@ const fetchBackendPreferences = async (userId) => {
   return normalizeDbPrefs(prefsRaw);
 };
 
-const normalizeDbPrefs = (db = {}) => ({
-  goal: db.goal || "maintain",
-  macroPreference: db.macro_preference || "balanced",
-  calorieTarget: db.calorie_target ?? 2000,
-  mealsPerDay: db.meals_per_day ?? 3,
-  dailyBudget: db.daily_budget ?? "",
-  dietaryPreference: db.dietary_preference ?? [],
-  avoidFoods: db.avoid_foods ?? "",
-  allergies: db.allergies ?? [],
-  healthConditions: db.health_conditions ?? [],
-  specialGoals: db.special_goals ?? [],
-  cookingMethod: db.cooking_methods ?? [],
-  mealComplexity: db.meal_complexity || "simple",
-  mealPrepStyle: db.meal_prep_style || "daily",
-  cookingTime: db.cooking_time || "",
-  appetite: db.appetite || "average"
-});
+const normalizeDbPrefs = (db = {}) => {
+  // Debug: log what we receive from backend
+  console.log("[normalizeDbPrefs] Raw db:", db);
+  
+  const normalized = {
+    goal: db.goal || "maintain",
+    macroPreference: db.macro_preference || db.macroPreference || "balanced",
+    calorieTarget: db.calorie_target || db.calorieTarget || 2000,
+    mealsPerDay: db.meals_per_day || db.mealsPerDay || 3,
+    dailyBudget: db.daily_budget || db.dailyBudget || "",
+    dietaryPreference: db.dietary_preference || db.dietaryPreference || [],
+    avoidFoods: db.avoid_foods || db.avoidFoods || "",
+    allergies: db.allergies || [],
+    healthConditions: db.health_conditions || db.healthConditions || [],
+    specialGoals: db.special_goals || db.specialGoals || [],
+    cookingMethod: db.cooking_methods || db.cookingMethod || [],
+    mealComplexity: db.meal_complexity || db.mealComplexity || "simple",
+    mealPrepStyle: db.meal_prep_style || db.mealPrepStyle || "daily",
+    cookingTime: db.cooking_time || db.cookingTime || "",
+    appetite: db.appetite || "average"
+  };
+  
+  console.log("[normalizeDbPrefs] Normalized:", normalized);
+  return normalized;
+};
 
 // ============== SUB-COMPONENTS ==============
 

@@ -18,7 +18,8 @@ import {
   FaThumbsUp,
   FaHistory
 } from 'react-icons/fa';
-import { API_BASE } from '../../api';
+import { DashboardSEO } from '../../components/seo/SEO';
+import { API_BASE, trackEngagementEvent } from '../../api';
 
 // Health Goals Progress Component
 const HealthGoalsProgress = ({ nutritionData, goals }) => {
@@ -218,8 +219,8 @@ const MealComparison = ({ aiRecommended, vendorAvailable, vendorPromoted, onSele
         {/* Vendor Promoted */}
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1">
-            <FaThumbsUp className="text-amber-500" />
-            Popular Choice
+            <FaStar className="text-amber-500" />
+            Promoted Meal
           </p>
           {vendorPromoted ? (
             <MealCard 
@@ -330,6 +331,7 @@ const RecentActivity = ({ activities }) => {
 export default function StudentHomeDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [nutritionData, setNutritionData] = useState(null);
   const [healthGoals, setHealthGoals] = useState(null);
   const [mealRecommendations, setMealRecommendations] = useState({
@@ -345,9 +347,33 @@ export default function StudentHomeDashboard() {
   });
   const [recentActivity, setRecentActivity] = useState([]);
 
+  // Check privacy agreement on first load
+  useEffect(() => {
+    checkPrivacyStatus();
+  }, []);
+
   useEffect(() => {
     fetchDashboardData();
+    // Track page view engagement
+    trackEngagementEvent('page_view', { page: 'dashboard' }).catch(() => {});
   }, []);
+
+  const checkPrivacyStatus = async () => {
+    try {
+      const data = await getPrivacyStatus();
+      if (data.requires_agreement) {
+        setShowPrivacyModal(true);
+      }
+    } catch (err) {
+      console.error('Failed to check privacy status:', err);
+    }
+  };
+
+  const handlePrivacyAccepted = () => {
+    setShowPrivacyModal(false);
+    // Navigate to meal preferences for first-time users
+    navigate('/meal-preferences');
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -400,14 +426,19 @@ export default function StudentHomeDashboard() {
               description: firstAvailable.description || ''
             } : null;
             
-            // Promoted: highest rated (only when rating exists)
-            const availableRated = items.filter(i => i.is_available && typeof i.rating === 'number');
-            availableRated.sort((a, b) => b.rating - a.rating);
-            const top = availableRated[0];
-            promotedMeal = top ? {
-              ...top,
-              vendor: vendors[0].name
-            } : null;
+            // Promoted: Fetch from promoted meals endpoint
+            const promotedRes = await fetch(`${API_BASE}/student/promoted-meals`, { headers }).catch(() => ({ ok: false }));
+            if (promotedRes.ok) {
+              const promotedData = await promotedRes.json();
+              const promotedMeals = promotedData.promoted_meals || [];
+              if (promotedMeals.length > 0) {
+                const firstPromoted = promotedMeals[0];
+                promotedMeal = {
+                  ...firstPromoted,
+                  vendor: firstPromoted.vendor_name || 'Vendor'
+                };
+              }
+            }
           }
         }
       }
@@ -591,6 +622,8 @@ export default function StudentHomeDashboard() {
   }
 
   return (
+    <>
+    <DashboardSEO />
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
@@ -665,5 +698,6 @@ export default function StudentHomeDashboard() {
         </button>
       </div>
     </div>
+    </>
   );
 }
